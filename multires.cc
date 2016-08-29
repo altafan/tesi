@@ -272,20 +272,20 @@ void multires(/*char* path*/) {
 	int codes = 0;
 	for (int i = 0; i < levels; i++){
 		int dbg = 0;
-		int sizex = bsx/(1<<i);
-		int sizey = bsy/(1<<i);
+		int sizex = bsx / (1<<i);
+		int sizey = bsy / (1<<i);
 		int ct = 0;
 		for (int y = sizey-1; y >=0; y--){  
 			if(dbg) printf("%d: ",y);
 			for (int x = 0; x < sizex; x++){
 				ct += (bitmask[i][sizex*y+x] == i+1 ? 1 : 0);
-				if(bitmask[i][sizex*y+x]!=i+1)
+				if(bitmask[i][sizex*y+x] != i+1){
 					if(dbg) printf("%d ",bitmask[i][sizex*y+x]);//<=i+1?bitmask[i][sizex*y+x]:0));
-					else {
-						if(dbg) printf("%dB",bitmask[i][sizex*y+x]);
-						bitmaskC[i][sizex*y+x]=codes++;
-						bound_blocks++;
-					}
+				} else {
+					if(dbg) printf("%dB",bitmask[i][sizex*y+x]);
+					bitmaskC[i][sizex*y+x]=codes++;
+					bound_blocks++;
+				}
 					
 			}
 			if(dbg) printf("\n");
@@ -297,13 +297,13 @@ void multires(/*char* path*/) {
 	printf("Celle originali %d, celle multires %d\n",map.ncols*map.nrows,tot_blocks*BLOCKSIZE_X*BLOCKSIZE_Y);
     printf("Compressione: %2.1fx\n",1.0/((0.0+tot_blocks)*BLOCKSIZE_X*BLOCKSIZE_Y/map.ncols/map.nrows));
 
-	for (int i = 0; i < levels; i++){
+	for(int i = 0; i < levels; i++){
 		int dbg = 0;
 		int sizex = bsx / (1<<i);
 		int sizey = bsy / (1<<i);
 
-		for (int y = sizey - 1; y >= 0; y--){  
-		  for (int x = 0; x < sizex; x++){
+		for(int y = sizey - 1; y >= 0; y--){  
+		  for(int x = 0; x < sizex; x++){
 			if (bitmask[i][sizex*y+x]==i+1 &&
 				bitmaskC[i][sizex*y+x]==-1) // se non gia' assegnato (contorni)
 					bitmaskC[i][sizex*y+x] = codes++;
