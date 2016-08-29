@@ -249,22 +249,23 @@ void multires(/*char* path*/) {
 				}
 			}
     }
-	/*
-	//stampa bitmask
-    for(int i1 = 0; i1 < levels; i1++) {
-		int sizex = bsx / (1<<i1);
-		int sizey = bsy / (1<<i1);
-		
-		for(int y = sizey-1; y >=0; y--) {
-			printf("%3d: ", y);
-			for(int x = 0; x < sizex; x++)
-	    		if(bitmask[i1][sizex * y + x] == -1)
-	      			printf("! ");
-	    		else 
-					printf("%d ",bitmask[i1][sizex*y+x]);
-	  		printf("\n");
-		}
-    }*/
+	
+	if(0)
+		//stampa bitmask
+	    for(int i1 = 0; i1 < levels; i1++) {
+			int sizex = bsx / (1<<i1);
+			int sizey = bsy / (1<<i1);
+			
+			for(int y = sizey-1; y >=0; y--) {
+				printf("%3d: ", y);
+				for(int x = 0; x < sizex; x++)
+		    		if(bitmask[i1][sizex * y + x] == -1)
+		      			printf("! ");
+		    		else 
+						printf("%d ",bitmask[i1][sizex*y+x]);
+		  		printf("\n");
+			}
+	    }
     
     //codifica dei blocchi
 	int tot_blocks = 0;
@@ -303,19 +304,19 @@ void multires(/*char* path*/) {
 		int sizey = bsy / (1<<i);
 
 		for(int y = sizey - 1; y >= 0; y--){  
-		  for(int x = 0; x < sizex; x++){
-			if (bitmask[i][sizex*y+x]==i+1 &&
-				bitmaskC[i][sizex*y+x]==-1) // se non gia' assegnato (contorni)
-					bitmaskC[i][sizex*y+x] = codes++;
+			for(int x = 0; x < sizex; x++){
+				if (bitmask[i][sizex*y+x]==i+1 &&
+					bitmaskC[i][sizex*y+x]==-1) // se non gia' assegnato (contorni)
+						bitmaskC[i][sizex*y+x] = codes++;
 			
-			if(dbg) {
-				if (bitmaskC[i][sizex*y+x]==-1) 
-					printf("... ");
-				else
-					printf("%3d ",bitmaskC[i][sizex*y+x]);
-		    }
-		  }
-		  if(dbg) printf("\n");
+				if(dbg) {
+					if (bitmaskC[i][sizex*y+x]==-1) 
+						printf("... ");
+					else
+						printf("%3d ",bitmaskC[i][sizex*y+x]);
+		    	}
+		  	}
+		  	if(dbg) printf("\n");
 		}
 	}
 	
