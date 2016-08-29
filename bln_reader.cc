@@ -191,7 +191,16 @@ void raster(int n_slab) {
     		else 
     			printf("0 ");
     	printf("\n");
-    }	
+    }
+    
+    // salva le info della matrice di tavolette interne al bounding box:
+    // nrow ncol, min_xy, dx dy
+    ofstream file;
+    file.open("map_info.txt");
+    file << (pMi - pmi + 1) * slabs.dy[0] << " " << (pMj - pmj + 1) * slabs.dx[0] << "\n";
+    file << min_xy.x << " " << min_xy.y << "\n";
+    file << 1 << " " << 1;
+    file.close();
 
 }
 
