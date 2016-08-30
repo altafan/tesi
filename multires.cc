@@ -21,9 +21,13 @@ void read_map(string path) {
 		file >> map.minx_map;
 		file >> map.miny_map;
 		file >> map.dx;
-		file >> map.dy; 		
-	} else
+		file >> map.dy; 
+		file >> map.first;
+		file >> map.last;		
+	} else {
 		printf("Unable to open file. %s not found. \n\n", path.c_str());
+		exit(1);
+	}
 		
 	file.close();
 		
@@ -51,8 +55,10 @@ void read_pts(string path) {
 			file >> g.punti_m[i].w;
 			++i;
 		}
-	} else 
+	} else {
 		printf("Unable to open file. %s not found. \n\n", path.c_str());
+		exit(1);
+	}
 		
 	file.close();
 	
@@ -62,7 +68,7 @@ void read_pts(string path) {
 	
 }
 
-void multires(/*char* path*/) {
+void multires(string path) {
 	
 	printf("\nMultiresolution processing ------------\n");
 	
@@ -324,6 +330,13 @@ void multires(/*char* path*/) {
 	
 	map.tot_blocks = tot_blocks;
 	map.bound_blocks = bound_blocks;
+
+	for(int i = map.first; i <= map.last; ++i) {
+		string file = path;
+		file = file + to_string(i) + ".grd";
+		ifstream file(file);
+	}
+
 }
 
 
@@ -331,10 +344,11 @@ int main() {
 	
 	string map_file = "map_info.txt";
 	string pts_file = "polygons/prova.PTS";
+	string path = "slabs/";
 
 	read_map(map_file);
 	read_pts(pts_file);
-	multires();
+	multires(path);
 
 	return 0;
 

@@ -41,8 +41,10 @@ void readBLN(string path) {
 			file >> pol.edges[i];
 			++i;
 		}
-	} else
-			printf("Unable to open file. %s not found.\n\n", pathBLN.c_str());
+	} else{
+		printf("Unable to open file. %s not found.\n\n", pathBLN.c_str());
+		exit(1);
+	}
 
 	file.close();
 
@@ -113,8 +115,10 @@ void readGRD(string path, int n_slab) {
 			if(slabs.m_points[i].y < s_min.y)
 				s_min.y = slabs.m_points[i].y;
 
-		} else
+		} else {
 			printf("Unable to open file. %s not found.\n\n", pathGRD.c_str());
+			exit(1);
+		}
 
 		file.close();
 	}
@@ -143,8 +147,10 @@ int countGRD(string path) {
 		ifstream file("grd.info");	
 		file >> n;
 		file.close();
-	} else
+	} else {
 		printf("Unable to find .grd files in %s\n", path.c_str());
+		exit(1);
+	}
 
 	printf("slab info read\n");
 
@@ -199,7 +205,8 @@ void raster(int n_slab) {
     file.open("map_info.txt");
     file << (pMi - pmi + 1) * slabs.dy[0] << " " << (pMj - pmj + 1) * slabs.dx[0] << "\n";
     file << min_xy.x << " " << min_xy.y << "\n";
-    file << 1 << " " << 1;
+    file << 1 << " " << 1 << "\n";
+    file << cols * pmj + (rows - pMi) << " " << cols * pMj + (rows - pmi);
     file.close();
 
 }

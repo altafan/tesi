@@ -55,6 +55,7 @@ typedef struct maps_ {
 	int* host_info_x_m; 
 	int* host_info_y_m;
 	int tot_blocks, bound_blocks;
+	int first, last;
 } maps;
 
 typedef struct global_ {
