@@ -278,7 +278,7 @@ void multires(string path) {
 	int bound_blocks = 0;
 	int codes = 0;
 	for (int i = 0; i < levels; i++){
-		int dbg = 0;
+		int dbg = 1;
 		int sizex = bsx / (1<<i);
 		int sizey = bsy / (1<<i);
 		int ct = 0;
