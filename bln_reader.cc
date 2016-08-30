@@ -206,7 +206,8 @@ void raster(int n_slab) {
     file << (pMi - pmi + 1) * slabs.dy[0] << " " << (pMj - pmj + 1) * slabs.dx[0] << "\n";
     file << min_xy.x << " " << min_xy.y << "\n";
     file << 1 << " " << 1 << "\n";
-    file << cols * pmj + (rows - pMi) << " " << cols * pMj + (rows - pmi);
+    file << cols * pmj + (rows - pMi) << " " << cols * pMj + (rows - pmi)<< "\n";
+    file << slabs.dx[0] << " " << slabs.dy[0] << "\n";
     file.close();
 
 }

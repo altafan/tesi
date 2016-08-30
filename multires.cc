@@ -23,7 +23,9 @@ void read_map(string path) {
 		file >> map.dx;
 		file >> map.dy; 
 		file >> map.first;
-		file >> map.last;		
+		file >> map.last;
+		file >> map.dxs;
+		file >> map.dys;		
 	} else {
 		printf("Unable to open file. %s not found. \n\n", path.c_str());
 		exit(1);
@@ -37,6 +39,7 @@ void read_map(string path) {
 	printf("Map info read:\n");
 	printf("nrows: %d \nncols: %d \nminx: %d \nminy: %d \n",map.nrows,map.ncols,map.minx_map,map.miny_map);
 	printf("maxx: %d \nmaxy: %d \ndx: %d \ndy: %d \n",map.maxx_map,map.maxy_map,map.dx,map.dy);
+	printf("first: %d\n last: %d\nslabs dx: %d \nslabs dy: %d \n", map.first, map.last, map.dxs,map.dys);
 
 }
 
@@ -99,6 +102,7 @@ void multires(string path) {
 	map.maxx_map = map.minx_map + map.dx * (esx - 1);
 	map.maxy_map = map.miny_map + map.dy * (esy - 1);	
 	
+	printf("new minx: %d, new miny: %d\n", map.minx_map, map.miny_map);
 	printf("new maxx: %d\nnew maxy: %d\n", map.maxx_map,map.maxy_map);
 
     // bitmask: valori -1..levels-1, 
@@ -278,7 +282,7 @@ void multires(string path) {
 	int bound_blocks = 0;
 	int codes = 0;
 	for (int i = 0; i < levels; i++){
-		int dbg = 1;
+		int dbg = 0;
 		int sizex = bsx / (1<<i);
 		int sizey = bsy / (1<<i);
 		int ct = 0;
@@ -291,7 +295,7 @@ void multires(string path) {
 				} else {
 					if(dbg) printf("%dB",bitmask[i][sizex*y+x]);
 					bitmaskC[i][sizex*y+x]=codes++;
-					bound_blocks++;
+					//bound_blocks++;
 				}
 					
 			}
@@ -331,11 +335,48 @@ void multires(string path) {
 	map.tot_blocks = tot_blocks;
 	map.bound_blocks = bound_blocks;
 
+	printf("------------------------------------------------------\n");
+
+	int x_blocks=1<<(int)(ceil(log((float)map.tot_blocks)/log((float)2)/(float)2)); 
+  	int y_blocks=(tot_blocks-1)/x_blocks+1;
+	printf ("blocks %d alloc: %d x %d array \n",tot_blocks,x_blocks,y_blocks);
+
+	map.host_grid_multi=(F4*)malloc(x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y*sizeof(F4));
+
 	for(int i = map.first; i <= map.last; ++i) {
 		string file = path;
 		file = file + to_string(i) + ".grd";
-		ifstream file(file);
+		ifstream f(file);
+
+		/*
+		char type[10];
+
+		if(!file.fail()) {
+			file >> type;
+			file >> slabs.dx[i] >> slabs.dy[i];
+			file >> slabs.m_points[i].x >> slabs.M_points[i].x;
+			file >> slabs.m_points[i].y >> slabs.M_points[i].y;
+		}*/
 	}
+/*
+	for (int i=0;i<levels;i++) {
+		int sizex=bsx/(1<<i);
+		int sizey=bsy/(1<<i);
+		for (int y = 0; y < sizey; y ++)
+			for (int x = 0; x < sizex; x ++)
+		    	if (bitmaskC[i][sizex*y+x]>=0){
+		    		for (int x1=0;x1<BLOCKSIZE_X;x1++)
+						for (int y1=0;y1<BLOCKSIZE_X;y1++){
+				    		int b=bitmaskC[i][sizex*y+x];
+				  			int x=b%x_blocks;
+				  			int y=b/x_blocks;
+
+				  			int idx=(y*BLOCKSIZE_Y+y1)*x_blocks*BLOCKSIZE_X+BLOCKSIZE_X*x+x1;
+				   			printf("idx %d,  ",idx);
+				  			printf("Block %d, xb%d %d, %d %d\n",i,x_blocks,y_blocks,x,y);
+				  		}
+		    	}
+    }*/
 
 }
 
