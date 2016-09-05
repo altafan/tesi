@@ -124,10 +124,10 @@ void readGRD(string path, int n_slab) {
 	}
 	
 	//calcola il vertice in basso a sx della tavoletta più a sx interna al bounding box
-	min_xy.x = ((int)(pol_mp.x - s_min.x) / slabs.dx[0]) * 
-		slabs.dx[0] + s_min.x;
-	min_xy.y = ((int)(pol_mp.y - s_min.y) / slabs.dy[0]) * 
-		slabs.dy[0] + s_min.y;
+	min_xy.x = //(int)((pol_mp.x - s_min.x) / slabs.dx[0]) * slabs.dx[0] + s_min.x;
+	floor((((int)(pol_mp.x - s_min.x) / slabs.dx[0]) * slabs.dx[0] + s_min.x) / 10) * 10;
+	min_xy.y = //(int)((pol_mp.y - s_min.y) / slabs.dy[0]) * slabs.dy[0] + s_min.y;
+	floor((((int)(pol_mp.y - s_min.y) / slabs.dy[0]) * slabs.dy[0] + s_min.y) / 10) * 10;
 	
 	printf("s_min: %d, %d\n", s_min.x, s_min.y);
 	printf("s_max: %d, %d\n", s_max.x, s_max.y);
@@ -170,10 +170,10 @@ void raster(int n_slab) {
 
 	//calcola gli indici della griglia di tavolette in cui cade il bounding box
 	int pmi = rows - 1 - ((int)(pol_Mp.y - s_min.y)) / slabs.dy[0];
-	int pmj = (min_xy.x - s_min.x) / slabs.dx[0];
-	int pMi = rows-1-((min_xy.y - s_min.y)/slabs.dy[0]);
+	int pmj = (pol_mp.x - s_min.x) / slabs.dx[0];
+	int pMi = rows - ((pol_mp.y - s_min.y)/slabs.dy[0]) ;
 	int pMj = ((int)(pol_Mp.x - s_min.x)) / slabs.dx[0];	
-	
+
 	printf("pMi pmj: %d %d\n", pMi, pmj);
 	printf("pmi pMj: %d %d\n", pmi, pMj);
 
@@ -214,7 +214,7 @@ void raster(int n_slab) {
 
 int main() {
 
-	string BLN_path = "polygons/bln2";
+	string BLN_path = "polygons/bln3";
 	string GRD_path = "slabs/";
 
 	readBLN(BLN_path);

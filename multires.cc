@@ -33,13 +33,13 @@ void read_map(string path) {
 		
 	file.close();
 		
-	map.maxx_map = map.minx_map + (map.ncols - 1) * map.dx;
-	map.maxy_map = map.miny_map + (map.nrows - 1) * map.dy;
+	map.maxx_map = floor((map.minx_map + (map.ncols - 1) * map.dx) / 10) * 10;
+	map.maxy_map = floor((map.miny_map + (map.nrows - 1) * map.dy) / 10) * 10;
 		
 	printf("Map info read:\n");
 	printf("nrows: %d \nncols: %d \nminx: %d \nminy: %d \n",map.nrows,map.ncols,map.minx_map,map.miny_map);
 	printf("maxx: %d \nmaxy: %d \ndx: %d \ndy: %d \n",map.maxx_map,map.maxy_map,map.dx,map.dy);
-	printf("first: %d\n last: %d\nslabs dx: %d \nslabs dy: %d \n", map.first, map.last, map.dxs,map.dys);
+	printf("first: %d\nlast: %d\nslabs dx: %d \nslabs dy: %d \n", map.first, map.last, map.dxs,map.dys);
 
 }
 
@@ -343,7 +343,7 @@ void multires(string path) {
 
 	map.host_grid_multi = (F4*)malloc(x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y*sizeof(F4));
 	int* counter = (int*)malloc(x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y*sizeof(int));
-	//printf("%d\n",x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y*sizeof(int));
+	printf("%d\n",x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y);
 	
 	map.minx_map -= map.dx;
 	map.miny_map -= map.dy;
@@ -366,52 +366,55 @@ void multires(string path) {
 			f >> dx >> dy;
 			f >> m_point.x >> M_point.x;
 			f >> m_point.y >> M_point.y;
-			int m1,m2;
+			double m1,m2;
 			f >> m1 >> m2;
+
 			while(!f.eof()) {
 				double h_val;
 				int x_slab, y_slab;
 
 				f >> h_val;
+				if(h_val != 1.70141e38) {
+					x_slab = m_point.x + row;
+					y_slab = m_point.y + col;
+					//printf("%d %d\n",x_slab, y_slab);
+		
+					int x = (int)((x_slab - map.minx_map) / map.dx) / BLOCKSIZE_X;
+					int y = (int)((y_slab - map.miny_map) / map.dy) / BLOCKSIZE_Y;
+					//printf("%d \n",x);
+					int found = -1;
+					int codice = -1;
 
-				if(col == map.dxs) {
+					for(int ii = 0; ii < levels; ii++){
+					    int sizex = bsx / (1<<ii);
+					    int sizey = bsy / (1<<ii);
+
+				        if (bitmask[ii][sizex * (y/(1<<ii)) + (x/(1<<ii))] == ii+1) {
+				          	found = ii;
+				          	codice = bitmaskC[ii][sizex * (y/(1<<ii)) + (x/(1<<ii))];
+				          	//printf("%d %d\n",found,codice);
+				          	int x1=(int)((x_slab - map.minx_map) / map.dxs)%(BLOCKSIZE_X*(1<<found));
+				          	//printf("%d\n",x1);
+							int y1=(int)((y_slab - map.miny_map) / map.dys)%(BLOCKSIZE_Y*(1<<found));
+							//printf("%d\n",y1);
+							int x_multi=codice%x_blocks;
+			        		int y_multi=codice/x_blocks;
+			        		
+
+			        		int idx = (y_multi*BLOCKSIZE_Y+y1)*x_blocks*BLOCKSIZE_X+BLOCKSIZE_X*x_multi+x1;
+			        		//printf("%d\n",idx);
+
+			        		map.host_grid_multi[idx].w += h_val;
+			        		++counter[idx];
+				        }   	
+					}
+				}
+
+				if(col == map.dys) {
 					++row;
 					col = 0;
 				}
 
-				x_slab = m_point.x + col;
-				y_slab = m_point.y + row;
-
-				int x = (int)((x_slab - map.minx_map) / map.dx) / BLOCKSIZE_X;
-				int y = (int)((y_slab - map.miny_map) / map.dy) / BLOCKSIZE_Y;
-;
-				int found=-1;
-				int codice=-1;
-				for(int ii = 0; ii < levels; ii++){
-				    int sizex = bsx / (1<<ii);
-				    int sizey = bsy / (1<<ii);
-			        if (bitmask[ii][sizex * (y/(1<<ii)) + (x/(1<<ii))] == ii+1) {
-			          found = ii;
-			          codice = bitmaskC[ii][sizex * (y/(1<<ii)) + (x/(1<<ii))];
-			        }
-				}
-				
-				if(found != -1) {
-					int x1=(int)((x_slab - map.minx_map) / map.dx)%(BLOCKSIZE_X*(1<<found));
-					int y1=(int)((y_slab - map.miny_map) / map.dy)%(BLOCKSIZE_Y*(1<<found));
-
-					int x_multi=codice%x_blocks;
-	        		int y_multi=codice/x_blocks;
-	        		//printf("%d %d \n",x_multi,y_multi);
-
-	        		int idx = (y_multi*BLOCKSIZE_Y+y1)*x_blocks*BLOCKSIZE_X+BLOCKSIZE_X*x_multi+x1;
-	        		//printf("%d\n",idx);
-
-	        		map.host_grid_multi[idx].w += h_val;
-
-	        		counter[idx]++;
-
-				}
 				++col;
 			}
 		} else {
@@ -419,33 +422,14 @@ void multires(string path) {
 			exit(1);
 		}
 
-		printf("%d.grd loaded.\n",i);
+		//printf("%d.grd loaded.\n",i);
 	}
 
 	for(int j = 0; j < x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y; ++j) 
-			if(counter[j] != 0) {
-				map.host_grid_multi[j].w /= counter[j];
-				//printf("%d %f \n",counter[j],map.host_grid_multi[j].w);
-			}
-/*
-	for (int i=0;i<levels;i++) {
-		int sizex=bsx/(1<<i);
-		int sizey=bsy/(1<<i);
-		for (int y = 0; y < sizey; y ++)
-			for (int x = 0; x < sizex; x ++)
-		    	if (bitmaskC[i][sizex*y+x]>=0){
-		    		for (int x1=0;x1<BLOCKSIZE_X;x1++)
-						for (int y1=0;y1<BLOCKSIZE_X;y1++){
-				    		int b=bitmaskC[i][sizex*y+x];
-				  			int x=b%x_blocks;
-				  			int y=b/x_blocks;
-
-				  			int idx=(y*BLOCKSIZE_Y+y1)*x_blocks*BLOCKSIZE_X+BLOCKSIZE_X*x+x1;
-				   			printf("idx %d,  ",idx);
-				  			printf("Block %d, xb%d %d, %d %d\n",i,x_blocks,y_blocks,x,y);
-				  		}
-		    	}
-    }*/
+		if(counter[j] != 0) {
+			map.host_grid_multi[j].w /= counter[j];
+			//printf("%d %d %f \n",j,counter[j],map.host_grid_multi[j].w);
+		}
 
 }
 
