@@ -214,7 +214,7 @@ void raster(int n_slab) {
 
 int main() {
 
-	string BLN_path = "polygons/bln3";
+	string BLN_path = "polygons/bln2";
 	string GRD_path = "slabs/";
 
 	readBLN(BLN_path);
