@@ -18,6 +18,7 @@ void read_map(string path) {
 	ifstream file(path);
 
 	if(!file.fail()) {
+		file >> map.slabs_nrows;
 		file >> map.nrows;
 		file >> map.ncols;
 		file >> map.minx_map;
@@ -346,108 +347,100 @@ void multires(string path) {
 	int* counter = (int*)malloc(x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y*sizeof(int));
 	printf("multiresolution matrix size: %d\n",x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y);
 
-	int c = 0;
-	for(int i = 0; i < y_blocks; ++i) {
-		for(int j = 0; j< x_blocks; j++) { 
-			printf("%d ",c);
-			c++;
+	int border_top = map.last % map.slabs_nrows;
+
+	for(int i = map.first; i <= map.last; ++i) {  
+		if(i <= (i - i%map.slabs_nrows + border_top) && (i % map.slabs_nrows) != 0) {
+			string file = path;
+			file = file + to_string(i) + ".grd";
+			printf("Opening %s\n",file.c_str());
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			ifstream f(file);
+
+			char type[10];
+			int dx, dy, max, min;
+			int_point m_point, M_point;
+			int row = 0;
+			int col = 0;
+
+			if(!f.fail()) {
+				f >> type;
+				f >> dx >> dy;
+				f >> m_point.x >> M_point.x;
+				f >> m_point.y >> M_point.y;
+				double m1,m2;
+				f >> m1 >> m2;
+
+				while(!f.eof()) {
+					double h_val;
+					int x_slab, y_slab;
+
+					f >> h_val;
+					//if(col == map.dys) {printf("%d\n",g);g++;std::this_thread::sleep_for(std::chrono::milliseconds(1000));}	
+					if(col == map.dys) {
+						++row;
+						col = 0;
+						//std::this_thread::sleep_for(std::chrono::milliseconds(300));
+					}
+	 
+					if(h_val != 1.70141e38) {
+						//coordinate reali del punto che viene letto
+						x_slab = m_point.x + row;
+						y_slab = m_point.y + col;
+						//printf("%d %d\n",x_slab,y_slab);
+						
+						//coordinate di blocco
+						int x = (int)(((x_slab - map.minx_map) / map.dx + 1) / BLOCKSIZE_X);
+						int y = (int)(((y_slab - map.miny_map) / map.dy + 1) / BLOCKSIZE_Y);
+						//printf("%d %d\n",x,y);
+
+						int found = -1;
+						int codice = -1;
+
+						for(int ii = 0; ii < levels; ii++){
+						    int sizex = bsx / (1<<ii);
+						    int sizey = bsy / (1<<ii);
+					        if (bitmask[ii][sizex * (y/(1<<ii)) + (x/(1<<ii))] == ii+1) {
+					          	found = ii;
+					          	codice = bitmaskC[ii][sizex * (y/(1<<ii)) + (x/(1<<ii))];
+
+					          	//offset nel blocco
+					          	int x1=((int)((x_slab - map.minx_map) / map.dx + 1) % (BLOCKSIZE_X*(1<<found)));
+					          	int y1=((int)((y_slab - map.miny_map) / map.dy + 1) % (BLOCKSIZE_Y*(1<<found)));
+					          	//printf("%d %d ",x1,y1);
+
+								//offset in host_grid_multi
+								int x_multi = codice % x_blocks;
+				        		int y_multi = codice / x_blocks;
+				        		//printf("%d %d %d ",x_multi, y_multi,codice);
+
+				        		//ricavo ora l'indice corretto in host_grid_multi
+				        		int idx = (y_multi*BLOCKSIZE_Y+y1)*BLOCKSIZE_X+(BLOCKSIZE_X*x_multi+x1);
+				        		//printf("%d\n",idx);
+
+				        		map.host_grid_multi[idx].w += h_val;
+				        		++counter[idx];
+
+					        }  	
+						}
+					}
+
+					++col;
+				}
+			} else {
+				printf("Unable to open file. %s not found.\n", file.c_str());
+				exit(1);
+			}
+
+			printf("%d.grd loaded.\n",i);
 		}
-		printf("\n");
 	}
 
-	//for(int i = map.first; i <= map.last; ++i) {
-		string file = path;
-		file = file + to_string(44) + ".grd";
-		printf("Opening %s\n",file.c_str());
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		ifstream f(file);
-
-		char type[10];
-		int dx, dy, max, min;
-		int_point m_point, M_point;
-		int row = 0;
-		int col = 0;
-
-		if(!f.fail()) {
-			f >> type;
-			f >> dx >> dy;
-			f >> m_point.x >> M_point.x;
-			f >> m_point.y >> M_point.y;
-			double m1,m2;
-			f >> m1 >> m2;
-
-			while(!f.eof()) {
-				double h_val;
-				int x_slab, y_slab;
-
-				f >> h_val;
-				//if(col == map.dys) {printf("%d\n",g);g++;std::this_thread::sleep_for(std::chrono::milliseconds(1000));}	
-				if(col == map.dys) {
-					++row;
-					col = 0;
-					//std::this_thread::sleep_for(std::chrono::milliseconds(300));
-				}
- 
-				if(h_val != 1.70141e38) {
-					//coordinate reali del punto che viene letto
-					x_slab = m_point.x + row;
-					y_slab = m_point.y + col;
-					//printf("%d %d\n",x_slab,y_slab);
-					
-					//coordinate di blocco
-					int x = (int)(((x_slab - map.minx_map) / map.dx + 1) / BLOCKSIZE_X);
-					int y = (int)(((y_slab - map.miny_map) / map.dy + 1) / BLOCKSIZE_Y);
-					//printf("%d %d\n",x,y);
-
-					int found = -1;
-					int codice = -1;
-
-					for(int ii = 0; ii < levels; ii++){
-					    int sizex = bsx / (1<<ii);
-					    int sizey = bsy / (1<<ii);
-				        if (bitmask[ii][sizex * (y/(1<<ii)) + (x/(1<<ii))] == ii+1) {
-				          	found = ii;
-				          	codice = bitmaskC[ii][sizex * (y/(1<<ii)) + (x/(1<<ii))];
-				          	//printf("%d %d %d %d\n",ii,x/(1<<ii),y/(1<<ii),codice);
-				          	//offset nel blocco
-				          	int x1=((int)((x_slab - map.minx_map) / map.dx + 1) % (BLOCKSIZE_X*(1<<found)));
-				          	int y1=((int)((y_slab - map.miny_map) / map.dy + 1) % (BLOCKSIZE_Y*(1<<found)));
-				          	if(codice == 0)
-				          	printf("%d %d ",x1,y1);
-
-							//offset in host_grid_multi
-							int x_multi = codice % x_blocks;
-			        		int y_multi = codice / x_blocks;
-			        		if(codice == 0)
-			        		printf("%d %d %d ",x_multi, y_multi,codice);
-
-			        		//ricavo ora l'indice corretto in host_grid_multi
-			        		int idx = (x_multi*BLOCKSIZE_Y+y1)*y_blocks*BLOCKSIZE_X+(BLOCKSIZE_X*y_multi+x1);
-			        		if(codice == 0)
-			        		printf("%d\n",idx);
-
-			        		/*map.host_grid_multi[idx].w += h_val;
-			        		++counter[idx];*/
-
-				        }  	
-					}
-				}
-
-				++col;
-			}
-		} else {
-			printf("Unable to open file. %s not found.\n", file.c_str());
-			exit(1);
-		}
-
-		printf("%d.grd loaded.\n",51);
-	//}
-
-	/*for(int j = 0; j < x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y; ++j)
+	for(int j = 0; j < x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y; ++j)
 		if(counter[j] != 0) {
 			map.host_grid_multi[j].w /= counter[j];
 			printf("%d %d %f \n",j,counter[j],map.host_grid_multi[j].w);
-		}*/
+		}
 
 }
 

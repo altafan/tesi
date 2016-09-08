@@ -49,6 +49,7 @@ typedef struct maps_ {
 	int esx,esy;
 	int minx_map,miny_map;
 	int maxx_map, maxy_map;
+	int slabs_nrows;
 	int dx,dy;
 	F* btm_map;
 	uchar4** host_info_m;
