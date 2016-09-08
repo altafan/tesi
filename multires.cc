@@ -166,8 +166,9 @@ void multires(string path) {
 		if(hi == 0) // se non tutto ad alta
 			for(int i1 = 0; i1 < g.punti_m.size(); i1++){
 				if((int) g.punti_m[i1].z - 1 == i) { // lavora al livello corrente
-					int x = ((g.punti_m[i1].x - map.minx_map) / map.dx - 1) / BLOCKSIZE_X; // scalo bordo maps
-					int y = ((g.punti_m[i1].y - map.miny_map) / map.dy - 1) / BLOCKSIZE_Y;
+					int x = ((g.punti_m[i1].x - map.minx_map) / map.dx + 1) / BLOCKSIZE_X; // scalo bordo maps
+					int y = ((g.punti_m[i1].y - map.miny_map) / map.dy + 1) / BLOCKSIZE_Y;
+
 					// ora allineo rispetto patch rispetto al livello di multirisoluzione richiesto
 					x = x / (1<<i) * (1<<i);
 					y = y / (1<<i) * (1<<i);
@@ -261,7 +262,7 @@ void multires(string path) {
 				}
 			}
     }
-	
+	//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 	if(0)
 		//stampa bitmask
 	    for(int i1 = 0; i1 < levels; i1++) {
@@ -278,7 +279,7 @@ void multires(string path) {
 		  		printf("\n");
 			}
 	    }
-    
+  
     //codifica dei blocchi
 	int tot_blocks = 0;
 	int bound_blocks = 0;
@@ -288,23 +289,19 @@ void multires(string path) {
 		int sizex = bsx / (1<<i);
 		int sizey = bsy / (1<<i);
 		int ct = 0;
-		for (int y = sizey-1; y >=0; y--){  
-			if(dbg) printf("%d: ",y);
-			for (int x = 0; x < sizex; x++){
+		for (int x =  0; x < sizex; x++){  
+			for (int y = 0; y < sizey; y++){
 				ct += (bitmask[i][sizex*y+x] == i+1 ? 1 : 0);
-				if(bitmask[i][sizex*y+x] != i+1){
-					if(dbg) printf("%d ",bitmask[i][sizex*y+x]);//<=i+1?bitmask[i][sizex*y+x]:0));
-				} else {
-					if(dbg) printf("%dB",bitmask[i][sizex*y+x]);
+				if(bitmask[i][sizex*y+x] == i+1){
 					bitmaskC[i][sizex*y+x]=codes++;
 					//bound_blocks++;
+					//printf("%d %d %d\n",x,y,bitmaskC[i][sizex*y+x]);
 				}
-					
 			}
 			if(dbg) printf("\n");
 		}
 		tot_blocks += ct;
-		printf("Level %d: ratio %f (%d cells)\n",i,(ct+0.0)/(sizex*sizey),ct);	  
+		if(dbg) printf("Level %d: ratio %f (%d cells)\n",i,(ct+0.0)/(sizex*sizey),ct);	  
 	}  
 	
 	printf("Celle originali %d, celle multires %d\n",map.ncols*map.nrows,tot_blocks*BLOCKSIZE_X*BLOCKSIZE_Y);
@@ -315,12 +312,12 @@ void multires(string path) {
 		int sizex = bsx / (1<<i);
 		int sizey = bsy / (1<<i);
 
-		for(int y = sizey - 1; y >= 0; y--){  
+		for(int y = sizey - 1; y >= 0; y--){ 
+			if(dbg) printf("%d: ",y); 
 			for(int x = 0; x < sizex; x++){
-				if (bitmask[i][sizex*y+x]==i+1 &&
+				/*if (bitmask[i][sizex*y+x]==i+1 &&
 					bitmaskC[i][sizex*y+x]==-1) // se non gia' assegnato (contorni)
-						bitmaskC[i][sizex*y+x] = codes++;
-			
+						bitmaskC[i][sizex*y+x] = codes++;*/
 				if(dbg) {
 					if (bitmaskC[i][sizex*y+x]==-1) 
 						printf("... ");
@@ -331,6 +328,8 @@ void multires(string path) {
 		  	if(dbg) printf("\n");
 		}
 	}
+
+	//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 	
 	printf("Celle %d, bound %d\n",tot_blocks,bound_blocks);
 	
@@ -339,22 +338,26 @@ void multires(string path) {
 
 	printf("------------------------------------------------------\n");
 
-	int x_blocks=1<<(int)(ceil(log((float)map.tot_blocks)/log((float)2)/(float)2)); 
-  	int y_blocks=(tot_blocks-1)/x_blocks+1;
+	int y_blocks=1<<(int)(ceil(log((float)map.tot_blocks)/log((float)2)/(float)2)); 
+  	int x_blocks=(tot_blocks-1)/y_blocks+1;
 	printf ("blocks %d alloc: %d x %d array \n",tot_blocks,x_blocks,y_blocks);
 
 	map.host_grid_multi = (F4*)malloc(x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y*sizeof(F4));
 	int* counter = (int*)malloc(x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y*sizeof(int));
-	printf("multireolution matrix size: %d\n",x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y);
-	
-	map.minx_map -= map.dx;
-	map.miny_map -= map.dy;
-	map.maxx_map = map.minx_map + (map.ncols - 1) * map.dx;
-	map.maxy_map = map.miny_map + (map.nrows - 1) * map.dy;
+	printf("multiresolution matrix size: %d\n",x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y);
 
-	for(int i = map.first; i <= map.last; ++i) {
+	int c = 0;
+	for(int i = 0; i < y_blocks; ++i) {
+		for(int j = 0; j< x_blocks; j++) { 
+			printf("%d ",c);
+			c++;
+		}
+		printf("\n");
+	}
+
+	//for(int i = map.first; i <= map.last; ++i) {
 		string file = path;
-		file = file + to_string(i) + ".grd";
+		file = file + to_string(44) + ".grd";
 		printf("Opening %s\n",file.c_str());
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		ifstream f(file);
@@ -378,51 +381,57 @@ void multires(string path) {
 				int x_slab, y_slab;
 
 				f >> h_val;
-
+				//if(col == map.dys) {printf("%d\n",g);g++;std::this_thread::sleep_for(std::chrono::milliseconds(1000));}	
 				if(col == map.dys) {
 					++row;
 					col = 0;
+					//std::this_thread::sleep_for(std::chrono::milliseconds(300));
 				}
  
-				//if(h_val != 1.70141e38) {
+				if(h_val != 1.70141e38) {
 					//coordinate reali del punto che viene letto
 					x_slab = m_point.x + row;
 					y_slab = m_point.y + col;
-					printf("%d %d\n",row, col);
+					//printf("%d %d\n",x_slab,y_slab);
 					
 					//coordinate di blocco
-					/*int x = (int)((x_slab - map.minx_map) / map.dx) / BLOCKSIZE_X;
-					int y = (int)((y_slab - map.miny_map) / map.dy) / BLOCKSIZE_Y;
+					int x = (int)(((x_slab - map.minx_map) / map.dx + 1) / BLOCKSIZE_X);
+					int y = (int)(((y_slab - map.miny_map) / map.dy + 1) / BLOCKSIZE_Y);
 					//printf("%d %d\n",x,y);
+
 					int found = -1;
 					int codice = -1;
 
 					for(int ii = 0; ii < levels; ii++){
 					    int sizex = bsx / (1<<ii);
 					    int sizey = bsy / (1<<ii);
-
 				        if (bitmask[ii][sizex * (y/(1<<ii)) + (x/(1<<ii))] == ii+1) {
 				          	found = ii;
 				          	codice = bitmaskC[ii][sizex * (y/(1<<ii)) + (x/(1<<ii))];
-
+				          	//printf("%d %d %d %d\n",ii,x/(1<<ii),y/(1<<ii),codice);
 				          	//offset nel blocco
-				          	int x1=(int)((x_slab - map.minx_map) / map.dx)%(BLOCKSIZE_X*(1<<found));;
-							int y1=(int)((y_slab - map.miny_map) / map.dy)%(BLOCKSIZE_Y*(1<<found));
-							//printf("%d\n",y1);
+				          	int x1=((int)((x_slab - map.minx_map) / map.dx + 1) % (BLOCKSIZE_X*(1<<found)));
+				          	int y1=((int)((y_slab - map.miny_map) / map.dy + 1) % (BLOCKSIZE_Y*(1<<found)));
+				          	if(codice == 0)
+				          	printf("%d %d ",x1,y1);
 
 							//offset in host_grid_multi
-							int x_multi=codice%x_blocks;
-			        		int y_multi=codice/x_blocks;
-			        		
-			        		//ricavo ora l'indice corretto in host_grid_multi
-			        		int idx = (y_multi*BLOCKSIZE_Y+y1)*x_blocks*BLOCKSIZE_X+BLOCKSIZE_X*x_multi+x1;
-			        		//printf("%d\n",idx);
+							int x_multi = codice % x_blocks;
+			        		int y_multi = codice / x_blocks;
+			        		if(codice == 0)
+			        		printf("%d %d %d ",x_multi, y_multi,codice);
 
-			        		map.host_grid_multi[idx].w += h_val;
-			        		++counter[idx];
-				        }   	
-					}*/
-				//}
+			        		//ricavo ora l'indice corretto in host_grid_multi
+			        		int idx = (x_multi*BLOCKSIZE_Y+y1)*y_blocks*BLOCKSIZE_X+(BLOCKSIZE_X*y_multi+x1);
+			        		if(codice == 0)
+			        		printf("%d\n",idx);
+
+			        		/*map.host_grid_multi[idx].w += h_val;
+			        		++counter[idx];*/
+
+				        }  	
+					}
+				}
 
 				++col;
 			}
@@ -431,14 +440,14 @@ void multires(string path) {
 			exit(1);
 		}
 
-		printf("%d.grd loaded.\n",i);
-	}
+		printf("%d.grd loaded.\n",51);
+	//}
 
-	for(int j = 0; j < x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y; ++j) 
+	/*for(int j = 0; j < x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y; ++j)
 		if(counter[j] != 0) {
 			map.host_grid_multi[j].w /= counter[j];
-			//printf("%d %d %f \n",j,counter[j],map.host_grid_multi[j].w);
-		}
+			printf("%d %d %f \n",j,counter[j],map.host_grid_multi[j].w);
+		}*/
 
 }
 
