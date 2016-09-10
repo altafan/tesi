@@ -100,10 +100,10 @@ void multires(string path) {
     //aggiorno range
     //ho tolto il bordo +2
     //ma allargato anche eventualmente la parte alta
-	map.minx_map += map.dx;
-	map.miny_map += map.dy;
-	map.maxx_map = map.minx_map + map.dx * (esx - 1);
-	map.maxy_map = map.miny_map + map.dy * (esy - 1);	
+	//map.minx_map += map.dx;
+	//map.miny_map += map.dy;
+	map.maxx_map = map.minx_map + map.dx * (esx);
+	map.maxy_map = map.miny_map + map.dy * (esy);	
 	
 	printf("new minx: %d, new miny: %d\n", map.minx_map, map.miny_map);
 	printf("new maxx: %d\nnew maxy: %d\n", map.maxx_map,map.maxy_map);
@@ -339,8 +339,8 @@ void multires(string path) {
 
 	printf("------------------------------------------------------\n");
 
-	int y_blocks=1<<(int)(ceil(log((float)map.tot_blocks)/log((float)2)/(float)2)); 
-  	int x_blocks=(tot_blocks-1)/y_blocks+1;
+	int x_blocks=1<<(int)(ceil(log((float)map.tot_blocks)/log((float)2)/(float)2)); 
+  	int y_blocks=(tot_blocks-1)/x_blocks+1;
 	printf ("blocks %d alloc: %d x %d array \n",tot_blocks,x_blocks,y_blocks);
 
 	map.host_grid_multi = (F4*)malloc(x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y*sizeof(F4));
@@ -349,12 +349,13 @@ void multires(string path) {
 
 	int border_top = map.last % map.slabs_nrows;
 
-	for(int i = map.first; i <= map.last; ++i) {  
+	for(int i = map.first; i <= map.last; ++i) { 
+	//int i = 44; { 
 		if(i <= (i - i%map.slabs_nrows + border_top) && (i % map.slabs_nrows) != 0) {
 			string file = path;
 			file = file + to_string(i) + ".grd";
 			printf("Opening %s\n",file.c_str());
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 			ifstream f(file);
 
 			char type[10];
@@ -377,7 +378,7 @@ void multires(string path) {
 
 					f >> h_val;
 					//if(col == map.dys) {printf("%d\n",g);g++;std::this_thread::sleep_for(std::chrono::milliseconds(1000));}	
-					if(col == map.dys) {
+					if(col == map.dxs) {
 						++row;
 						col = 0;
 						//std::this_thread::sleep_for(std::chrono::milliseconds(300));
@@ -385,13 +386,13 @@ void multires(string path) {
 	 
 					if(h_val != 1.70141e38) {
 						//coordinate reali del punto che viene letto
-						x_slab = m_point.x + row;
-						y_slab = m_point.y + col;
-						//printf("%d %d\n",x_slab,y_slab);
+						x_slab = m_point.x + col;
+						y_slab = m_point.y + row;
+						//printf("%d %d ",x_slab,y_slab);
 						
 						//coordinate di blocco
-						int x = (int)(((x_slab - map.minx_map) / map.dx + 1) / BLOCKSIZE_X);
-						int y = (int)(((y_slab - map.miny_map) / map.dy + 1) / BLOCKSIZE_Y);
+						int x = (int)(((x_slab - map.minx_map) / map.dx) / BLOCKSIZE_X);
+						int y = (int)(((y_slab - map.miny_map) / map.dy) / BLOCKSIZE_Y);
 						//printf("%d %d\n",x,y);
 
 						int found = -1;
@@ -405,18 +406,19 @@ void multires(string path) {
 					          	codice = bitmaskC[ii][sizex * (y/(1<<ii)) + (x/(1<<ii))];
 
 					          	//offset nel blocco
-					          	int x1=((int)((x_slab - map.minx_map) / map.dx + 1) % (BLOCKSIZE_X*(1<<found)));
-					          	int y1=((int)((y_slab - map.miny_map) / map.dy + 1) % (BLOCKSIZE_Y*(1<<found)));
-					          	//printf("%d %d ",x1,y1);
+					          	int x1=((int)((x_slab - map.minx_map) / map.dx) % (BLOCKSIZE_X*(1<<found)))/(1<<found);
+					          	int y1=((int)((y_slab - map.miny_map) / map.dy) % (BLOCKSIZE_Y*(1<<found)))/(1<<found);
+					          	//printf("%d %d\n",x1,y1);
 
 								//offset in host_grid_multi
 								int x_multi = codice % x_blocks;
 				        		int y_multi = codice / x_blocks;
-				        		//printf("%d %d %d ",x_multi, y_multi,codice);
+				        		//printf("%d %d %d\n",x_multi, y_multi,codice);
 
 				        		//ricavo ora l'indice corretto in host_grid_multi
-				        		int idx = (y_multi*BLOCKSIZE_Y+y1)*BLOCKSIZE_X+(BLOCKSIZE_X*x_multi+x1);
-				        		//printf("%d\n",idx);
+				        		int idx = (y_multi*BLOCKSIZE_Y+y1)*BLOCKSIZE_X*x_blocks+(BLOCKSIZE_X*x_multi+x1);
+				        		//if(codice == 0)
+				        		//printf("%d %d %d %d %d %d %d %d %d\n",x_slab,y_slab,x,y, x1,y1, x_multi,y_multi,idx);
 
 				        		map.host_grid_multi[idx].w += h_val;
 				        		++counter[idx];
