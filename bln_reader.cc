@@ -17,14 +17,11 @@ point pol_mp,pol_Mp;
 int_point min_xy;
 int_point s_max;
 int_point s_min;
+int npoints;
 
 void readBLN(string path) {
 
 	string pathBLN = path+".BLN";
-	int npoints;
-
-	/*strcpy(pathBLN, path);
-	strcat(pathBLN, ".BLN");*/
 
 	ifstream file(pathBLN);
 
@@ -59,16 +56,58 @@ void readBLN(string path) {
 			pol_mp.x = (int)pol.points[i].x;
 		if(pol.points[i].y < pol_mp.y)
 			pol_mp.y = (int)pol.points[i].y;
+
 		if(pol.points[i].x > pol_Mp.x)
 			pol_Mp.x = (int)pol.points[i].x;
 		if(pol.points[i].y > pol_Mp.y)
 			pol_Mp.y = (int)pol.points[i].y;
 	}
 
-	printf("Bounding box corners:\n");
-	printf("v_min: (%f,%f) \n",pol_mp.x,pol_mp.y);
-	printf("v_max: (%f,%f) \n",pol_Mp.x,pol_Mp.y);
+	/*printf("Bounding box corners:\n");
+	printf("v_min: (%d,%d) \n",(int)pol_mp.x,(int)pol_mp.y);
+	printf("v_max: (%d,%d) \n",(int)pol_Mp.x,(int)pol_Mp.y);*/
 	printf("polygon read\n");
+
+}
+
+void blnInterpolation() {
+
+	string path = "polygons/bln_raster.PTS";
+	ofstream file(path);
+
+	//per ogni coppia di vertici interpolazione del segmento che li unisce
+	for(int i = 0; i < npoints; ++i) {
+		double x0,x1,y0,y1,m;
+		if(i == npoints - 1) {
+			//printf("aaaaaaaaaaa%f %f\n",pol.points[0].x,pol.points[0].y);
+			x0 = pol.points[i].x;
+			y0 = pol.points[i].y;
+			x1 = pol.points[0].x;
+			y1 = pol.points[0].y;
+		} else {
+			x0 = pol.points[i].x;
+			y0 = pol.points[i].y;
+			x1 = pol.points[i+1].x;
+			y1 = pol.points[i+1].y;
+		}
+		m = (y1-y0) / (x1-x0);
+
+		if(x1 > x0)
+			for(int x = x0; x < x1; x += 4) {
+				int y = (int)(m * (x - x0) + y0);
+				//printf("%d %d\n",x,y);
+				file << x << " " << y << " 1 0\n";
+			}
+		else
+			for(int x = x1; x < x0; x += 4) {
+				int y = (int)(m * (x - x1) + y1);
+				file << x << " " << y << " 1 0\n";	
+			}
+	}
+
+	file.close();
+
+	printf("Polygon interpolation: complete\n");
 
 }
 
@@ -219,6 +258,7 @@ int main() {
 	string GRD_path = "slabs/";
 
 	readBLN(BLN_path);
+	blnInterpolation();
 
 	int n_slab = countGRD(GRD_path);
 

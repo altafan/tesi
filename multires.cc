@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <chrono>
-#include <thread>
 
 using namespace std;
 
@@ -52,7 +50,7 @@ void read_pts(string path) {
 	
 	if(!file.fail()) {
 		int i = 0;
-		g.punti_m.resize(3);
+		g.punti_m.resize(900);
 		
 		while(!file.eof()) {
 			file >> g.punti_m[i].x;
@@ -96,12 +94,6 @@ void multires(string path) {
     int bsx = esx / BLOCKSIZE_X; // bitmap size (ridotta di blocksize)
     int bsy = esy / BLOCKSIZE_Y;
 
-
-    //aggiorno range
-    //ho tolto il bordo +2
-    //ma allargato anche eventualmente la parte alta
-	//map.minx_map += map.dx;
-	//map.miny_map += map.dy;
 	map.maxx_map = map.minx_map + map.dx * (esx);
 	map.maxy_map = map.miny_map + map.dy * (esy);	
 	
@@ -116,12 +108,6 @@ void multires(string path) {
     uchar4** bitmaskS = (uchar4 **) malloc(levels * sizeof(uchar4*));//sides
 
     F* Z; // supporto per downsampling
-
-    /*host_info_m
-    map.host_info_m = (uchar4 **) malloc(levels * sizeof(uchar4*));//sides
-    map.host_info_x_m = (int*) malloc(levels * sizeof(int));//sides
-    map.host_info_y_m = (int*) malloc(levels * sizeof(int));//sides
-    */
 
     for(int i = 0; i < levels; i++){
 		int size = bsx * bsy / (1<<i) / (1<<i);
@@ -167,14 +153,14 @@ void multires(string path) {
 		if(hi == 0) // se non tutto ad alta
 			for(int i1 = 0; i1 < g.punti_m.size(); i1++){
 				if((int) g.punti_m[i1].z - 1 == i) { // lavora al livello corrente
-					int x = ((g.punti_m[i1].x - map.minx_map) / map.dx + 1) / BLOCKSIZE_X; // scalo bordo maps
-					int y = ((g.punti_m[i1].y - map.miny_map) / map.dy + 1) / BLOCKSIZE_Y;
+					int x = ((g.punti_m[i1].x - map.minx_map) / map.dx) / BLOCKSIZE_X; // scalo bordo maps
+					int y = ((g.punti_m[i1].y - map.miny_map) / map.dy) / BLOCKSIZE_Y;
 
 					// ora allineo rispetto patch rispetto al livello di multirisoluzione richiesto
 					x = x / (1<<i) * (1<<i);
 					y = y / (1<<i) * (1<<i);
 
-					printf("Force level %d point %f %f --> %d %d (%d %d)\n",(int)g.punti_m[i1].z,g.punti_m[i1].x,g.punti_m[i1].y,x,y,bsx,bsy);
+					//printf("Force level %d point %f %f --> %d %d (%d %d)\n",(int)g.punti_m[i1].z,g.punti_m[i1].x,g.punti_m[i1].y,x,y,bsx,bsy);
 					for(int ii = 0; ii < (1<<i); ii++)
 						for(int jj = 0; jj < (1<<i); jj++)
 							if(x + ii >= 0 && x + ii < bsx && y + jj >= 0 && y + jj < bsy)
@@ -263,8 +249,8 @@ void multires(string path) {
 				}
 			}
     }
-	//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-	if(0)
+
+	if(1)
 		//stampa bitmask
 	    for(int i1 = 0; i1 < levels; i1++) {
 			int sizex = bsx / (1<<i1);
@@ -276,7 +262,9 @@ void multires(string path) {
 		    		if(bitmask[i1][sizex * y + x] == -1)
 		      			printf("! ");
 		    		else 
-						printf("%d ",bitmask[i1][sizex*y+x]);
+		    			//if(bitmask[i1][sizex * y + x] == i1+1)
+						printf("%d ",bitmask[i1][sizex*y+x]);//printf("x ");
+					//else printf(". ");
 		  		printf("\n");
 			}
 	    }
@@ -329,8 +317,6 @@ void multires(string path) {
 		  	if(dbg) printf("\n");
 		}
 	}
-
-	//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 	
 	printf("Celle %d, bound %d\n",tot_blocks,bound_blocks);
 	
@@ -349,13 +335,12 @@ void multires(string path) {
 
 	int border_top = map.last % map.slabs_nrows;
 
-	for(int i = map.first; i <= map.last; ++i) { 
-	//int i = 44; { 
+	for(int i = map.first; i <= map.last; ++i) {  
 		if(i <= (i - i%map.slabs_nrows + border_top) && (i % map.slabs_nrows) != 0) {
 			string file = path;
 			file = file + to_string(i) + ".grd";
-			printf("Opening %s\n",file.c_str());
-			//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			//printf("Opening %s\n",file.c_str());
+
 			ifstream f(file);
 
 			char type[10];
@@ -377,11 +362,10 @@ void multires(string path) {
 					int x_slab, y_slab;
 
 					f >> h_val;
-					//if(col == map.dys) {printf("%d\n",g);g++;std::this_thread::sleep_for(std::chrono::milliseconds(1000));}	
+	
 					if(col == map.dxs) {
 						++row;
 						col = 0;
-						//std::this_thread::sleep_for(std::chrono::milliseconds(300));
 					}
 	 
 					if(h_val != 1.70141e38) {
@@ -426,22 +410,21 @@ void multires(string path) {
 					        }  	
 						}
 					}
-
+					f.close();
 					++col;
 				}
+				printf("%s loaded.\n",file.c_str());
 			} else {
 				printf("Unable to open file. %s not found.\n", file.c_str());
 				exit(1);
 			}
-
-			printf("%d.grd loaded.\n",i);
 		}
 	}
 
 	for(int j = 0; j < x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y; ++j)
 		if(counter[j] != 0) {
 			map.host_grid_multi[j].w /= counter[j];
-			printf("%d %d %f \n",j,counter[j],map.host_grid_multi[j].w);
+			//printf("%d %d %f \n",j,counter[j],map.host_grid_multi[j].w);
 		}
 
 }

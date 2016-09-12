@@ -25,7 +25,7 @@ typedef struct uchar4_ {
 } uchar4;
 
 typedef struct point_ {
-  float x,y;
+  double x,y;
 } point;
 
 typedef struct int_point_ {
