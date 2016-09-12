@@ -262,9 +262,10 @@ void multires(string path) {
 		    		if(bitmask[i1][sizex * y + x] == -1)
 		      			printf("! ");
 		    		else 
-		    			//if(bitmask[i1][sizex * y + x] == i1+1)
-						printf("%d ",bitmask[i1][sizex*y+x]);//printf("x ");
-					//else printf(". ");
+		    			if(bitmask[i1][sizex * y + x] == i1+1)
+		    				printf("x ");
+						//printf("%d ",bitmask[i1][sizex*y+x]);//
+					else printf(". ");
 		  		printf("\n");
 			}
 	    }
@@ -433,7 +434,7 @@ void multires(string path) {
 int main() {
 	
 	string map_file = "map_info.txt";
-	string pts_file = "polygons/prova.PTS";
+	string pts_file = "polygons/bln_raster.PTS";
 	string path = "slabs/";
 
 	read_map(map_file);
