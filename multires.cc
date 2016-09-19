@@ -50,7 +50,7 @@ void read_pts(string path) {
 	
 	if(!file.fail()) {
 		int i = 0;
-		g.punti_m.resize(900);
+		g.punti_m.resize(5755);
 		
 		while(!file.eof()) {
 			file >> g.punti_m[i].x;
@@ -67,8 +67,8 @@ void read_pts(string path) {
 	file.close();
 	
 	printf("\nFile .pts read:\n");
-	for(int i = 0; i < g.punti_m.size(); ++i)
-		printf("%d° punto: %f, %f, %f, %f\n",(i+1),g.punti_m[i].x,g.punti_m[i].y,g.punti_m[i].z,g.punti_m[i].w);
+	//for(int i = 0; i < g.punti_m.size(); ++i)
+		//printf("%d° punto: %f, %f, %f, %f\n",(i+1),g.punti_m[i].x,g.punti_m[i].y,g.punti_m[i].z,g.punti_m[i].w);
 	
 }
 
@@ -153,7 +153,7 @@ void multires(string path) {
 		if(hi == 0) // se non tutto ad alta
 			for(int i1 = 0; i1 < g.punti_m.size(); i1++){
 				if((int) g.punti_m[i1].z - 1 == i) { // lavora al livello corrente
-					int x = ((g.punti_m[i1].x - map.minx_map) / map.dx) / BLOCKSIZE_X; // scalo bordo maps
+					int x = ((g.punti_m[i1].x - map.minx_map) / map.dx) / BLOCKSIZE_X; 
 					int y = ((g.punti_m[i1].y - map.miny_map) / map.dy) / BLOCKSIZE_Y;
 
 					// ora allineo rispetto patch rispetto al livello di multirisoluzione richiesto
@@ -249,26 +249,6 @@ void multires(string path) {
 				}
 			}
     }
-
-	if(1)
-		//stampa bitmask
-	    for(int i1 = 0; i1 < levels; i1++) {
-			int sizex = bsx / (1<<i1);
-			int sizey = bsy / (1<<i1);
-			
-			for(int y = sizey-1; y >=0; y--) {
-				printf("%3d: ", y);
-				for(int x = 0; x < sizex; x++)
-		    		if(bitmask[i1][sizex * y + x] == -1)
-		      			printf("! ");
-		    		else 
-		    			if(bitmask[i1][sizex * y + x] == i1+1)
-		    				printf("x ");
-						//printf("%d ",bitmask[i1][sizex*y+x]);//
-					else printf(". ");
-		  		printf("\n");
-			}
-	    }
   
     //codifica dei blocchi
 	int tot_blocks = 0;
@@ -279,7 +259,7 @@ void multires(string path) {
 		int sizex = bsx / (1<<i);
 		int sizey = bsy / (1<<i);
 		int ct = 0;
-		for (int x =  0; x < sizex; x++){  
+		for (int x = 0; x < sizex; x++){  
 			for (int y = 0; y < sizey; y++){
 				ct += (bitmask[i][sizex*y+x] == i+1 ? 1 : 0);
 				if(bitmask[i][sizex*y+x] == i+1){
@@ -297,22 +277,36 @@ void multires(string path) {
 	printf("Celle originali %d, celle multires %d\n",map.ncols*map.nrows,tot_blocks*BLOCKSIZE_X*BLOCKSIZE_Y);
     printf("Compressione: %2.1fx\n",1.0/((0.0+tot_blocks)*BLOCKSIZE_X*BLOCKSIZE_Y/map.ncols/map.nrows));
 
-	for(int i = 0; i < levels; i++){
-		int dbg = 0;
+    //stampa bitmask e bitmaskC
+    int dbg = 0;
+    for(int i1 = 0; i1 < levels; i1++) {
+		int sizex = bsx / (1<<i1);
+		int sizey = bsy / (1<<i1);
+		
+		for(int y = sizey-1; y >=0; y--) {
+			if(dbg) printf("%3d: ", y);
+			for(int x = 0; x < sizex; x++)
+				if(dbg) {
+		    		if(bitmask[i1][sizex * y + x] == -1)
+		      			printf("! ");
+		    		else printf("%d ",bitmask[i1][sizex*y+x]);
+				}
+	  		if(dbg) printf("\n");
+		}
+    }
+
+    for(int i = 0; i < levels; i++){
 		int sizex = bsx / (1<<i);
 		int sizey = bsy / (1<<i);
 
 		for(int y = sizey - 1; y >= 0; y--){ 
 			if(dbg) printf("%d: ",y); 
 			for(int x = 0; x < sizex; x++){
-				/*if (bitmask[i][sizex*y+x]==i+1 &&
-					bitmaskC[i][sizex*y+x]==-1) // se non gia' assegnato (contorni)
-						bitmaskC[i][sizex*y+x] = codes++;*/
 				if(dbg) {
 					if (bitmaskC[i][sizex*y+x]==-1) 
 						printf("... ");
 					else
-						printf("%3d ",bitmaskC[i][sizex*y+x]);
+						printf("%3d\n ",bitmaskC[i][sizex*y+x]);
 		    	}
 		  	}
 		  	if(dbg) printf("\n");
@@ -330,9 +324,87 @@ void multires(string path) {
   	int y_blocks=(tot_blocks-1)/x_blocks+1;
 	printf ("blocks %d alloc: %d x %d array \n",tot_blocks,x_blocks,y_blocks);
 
+	map.host_grid_level_multi = (unsigned char*)malloc(tot_blocks*sizeof(unsigned char));
+    map.host_ofs_blocks = (ushort2*)malloc(tot_blocks*sizeof(ushort2));
 	map.host_grid_multi = (F4*)malloc(x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y*sizeof(F4));
 	int* counter = (int*)malloc(x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y*sizeof(int));
-	printf("multiresolution matrix size: %d\n",x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y);
+	map.host_info = (uchar4*)malloc(map.nrows * map.ncols * sizeof(uchar4));
+	int* assegnato = (int*)malloc(tot_blocks * sizeof(int*));
+	vector<int2> pt_list;
+
+	//inizializzo i vettori per memorizzare livello e ofs delle celle di bitmask 
+	for (int i=0;i<levels;i++) {
+		int sizex = bsx / (1<<i);
+		int sizey = bsy / (1<<i);
+		for (int y = 0; y < sizey; y++)
+			for (int x = 0; x < sizex; x ++)
+		    	if (bitmaskC[i][sizex*y+x] >= 0){
+		      		/// memorizza livello
+		      		map.host_grid_level_multi[bitmaskC[i][sizex*y+x]] = i;
+		      		//carico coordinate
+		      		map.host_ofs_blocks[bitmaskC[i][sizex*y+x]].x = x * (1<<i);
+		      		map.host_ofs_blocks[bitmaskC[i][sizex*y+x]].y = y * (1<<i);
+		      	}
+	}	
+
+	//iniziallizzo host_info 
+	for (int i = 0; i < map.ncols; i++)
+    	for (int j = 0; j < map.nrows; j++) {
+      		map.host_info[i + map.ncols * j].x=0;
+    	}
+
+    //inizializzo a false un array di dimensione tot_blocks per controllare di caricare una sola volta 
+    //tutti i blocchi in pt_list
+    for(int i = 0; i < tot_blocks; i++) 
+    	assegnato[i] = 0;
+
+    //per ogni punto di ogni retta ricavo il blocco a cui appartiene e aggiungo tutto il blocco a pt_list 
+    for(int i = 0; i < g.punti_m.size(); i++) {
+    	//int i = 1;{
+    	int ii = (int)g.punti_m[i].z - 1;
+    	int sizex = bsx / (1<<ii);
+
+    	//ricavo le coordinate di blocco
+		int x = (int)((g.punti_m[i].x - map.minx_map) / map.dx / BLOCKSIZE_X);
+		int y = (int)((g.punti_m[i].y - map.miny_map) / map.dy / BLOCKSIZE_Y);
+		//printf("%f %f\n",(g.punti_m[i].x - map.minx_map),(g.punti_m[i].y - map.miny_map));
+
+		int codice = bitmaskC[ii][sizex * (y/(1<<ii)) + (x/(1<<ii))];
+
+		//coordinate del blocco in multirisoluzione
+		int x_multi = codice % x_blocks;
+		int y_multi = codice / x_blocks;
+		//printf("%f %f %d %d %d\n",g.punti_m[i].x,g.punti_m[i].y,x_multi, y_multi,codice);
+		//printf("%d %d\n",x_multi,y_multi);
+		if(assegnato[codice] == 0) {
+			//printf("%d %d %d ",x_multi,y_multi,assegnato[x_multi][y_multi]);
+			for(int y1 = 0; y1 < BLOCKSIZE_Y; y1++) 
+				for(int x1 = 0; x1 < BLOCKSIZE_X; x1++) {
+					int idx = (y_multi*BLOCKSIZE_Y+y1)*BLOCKSIZE_X*x_blocks+(BLOCKSIZE_X*x_multi+x1);
+					//printf("%d\n",idx);
+					map.host_info[idx].x = 1;
+
+					int2 coord;
+
+					coord.x = map.minx_map + (BLOCKSIZE_X * x * map.dx) + x1 * map.dx * (1<<ii);
+					coord.y = map.miny_map + (BLOCKSIZE_Y * y * map.dy) + y1 * map.dy * (1<<ii);
+					printf("%d %d %d %d %d %d %d %d\n",x,y,x_multi,y_multi,coord.x,coord.y,codice,idx);
+					pt_list.push_back(coord);
+				}
+			assegnato[codice] = 1;
+			//printf("%d\n",assegnato[x_multi][y_multi]);
+		}
+	}
+	/*int u = 0;
+	for(int i = 0; i < pt_list.size(); i++)
+		printf("%d %d\n",pt_list[i].x,pt_list[i].y);
+	for(int i=0;i<pt_list.size();i++)
+		for(int j=0;j<pt_list.size();j++)
+			if(i != j)
+			if(pt_list[i].x == pt_list[j].x && pt_list[i].y == pt_list[j].y) u++;
+	printf("%d\n",u);*/
+
+	/*	printf("multiresolution matrix size: %d\n",x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y);
 
 	int border_top = map.last % map.slabs_nrows;
 
@@ -346,7 +418,7 @@ void multires(string path) {
 
 			char type[10];
 			int dx, dy, max, min;
-			int_point m_point, M_point;
+			int2 m_point, M_point;
 			int row = 0;
 			int col = 0;
 
@@ -411,9 +483,9 @@ void multires(string path) {
 					        }  	
 						}
 					}
-					f.close();
 					++col;
 				}
+				f.close();
 				printf("%s loaded.\n",file.c_str());
 			} else {
 				printf("Unable to open file. %s not found.\n", file.c_str());
@@ -426,7 +498,7 @@ void multires(string path) {
 		if(counter[j] != 0) {
 			map.host_grid_multi[j].w /= counter[j];
 			//printf("%d %d %f \n",j,counter[j],map.host_grid_multi[j].w);
-		}
+		}*/
 
 }
 
@@ -434,6 +506,7 @@ void multires(string path) {
 int main() {
 	
 	string map_file = "map_info.txt";
+	//string bln_file = "polygons/bln_raster.PTS";
 	string pts_file = "polygons/bln_raster.PTS";
 	string path = "slabs/";
 

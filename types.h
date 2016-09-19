@@ -28,18 +28,22 @@ typedef struct point_ {
   double x,y;
 } point;
 
-typedef struct int_point_ {
+typedef struct int2_ {
 	int x,y;
-} int_point;
+} int2;
+
+typedef struct ushort2_ {
+	unsigned short x,y;
+} ushort2;
 
 typedef struct polygon_ {
-  vector<point> points;
-  vector<int> edges;    
+	vector<point> points;
+  	vector<int> edges;    
 } polygon;
 
 typedef struct slab_ {
-	vector<int_point> m_points;
-	vector<int_point> M_points;
+	vector<int2> m_points;
+	vector<int2> M_points;
 	vector<int> dx;
 	vector<int> dy;
 }slab;
@@ -52,13 +56,15 @@ typedef struct maps_ {
 	int slabs_nrows;
 	int dx,dy;
 	F* btm_map;
-	uchar4** host_info_m;
+	uchar4* host_info;
 	int* host_info_x_m; 
 	int* host_info_y_m;
 	int tot_blocks, bound_blocks;
 	int first, last;
 	int dxs, dys;
 	F4* host_grid_multi;
+	unsigned char* host_grid_level_multi;
+	ushort2* host_ofs_blocks;
 } maps;
 
 typedef struct global_ {

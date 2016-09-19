@@ -14,9 +14,9 @@ polygon pol;
 slab slabs;
 
 point pol_mp,pol_Mp;
-int_point min_xy;
-int_point s_max;
-int_point s_min;
+int2 min_xy;
+int2 s_max;
+int2 s_min;
 int npoints;
 
 void readBLN(string path) {
@@ -73,13 +73,14 @@ void readBLN(string path) {
 void blnInterpolation() {
 
 	string path = "polygons/bln_raster.PTS";
-	ofstream file(path);
+	FILE * file;
+	file = fopen(path.c_str(),"w");
 
 	//per ogni coppia di vertici interpolazione del segmento che li unisce
 	for(int i = 0; i < npoints; ++i) {
+	//int i=0; {
 		double x0,x1,y0,y1,m;
 		if(i == npoints - 1) {
-			//printf("aaaaaaaaaaa%f %f\n",pol.points[0].x,pol.points[0].y);
 			x0 = pol.points[i].x;
 			y0 = pol.points[i].y;
 			x1 = pol.points[0].x;
@@ -90,22 +91,38 @@ void blnInterpolation() {
 			x1 = pol.points[i+1].x;
 			y1 = pol.points[i+1].y;
 		}
-		m = (y1-y0) / (x1-x0);
+		/*m = (y1-y0) / (x1-x0);
 
 		if(x1 > x0)
 			for(int x = x0; x < x1; x += 4) {
 				int y = (int)(m * (x - x0) + y0);
 				//printf("%d %d\n",x,y);
-				file << x << " " << y << " 1 0\n";
+				//file << x << " " << y << " 1 0\n";
+				printf("%d %d\n",x,y);
 			}
 		else
 			for(int x = x1; x < x0; x += 4) {
 				int y = (int)(m * (x - x1) + y1);
-				file << x << " " << y << " 1 0\n";	
-			}
+				//file << x << " " << y << " 1 0\n";
+				printf("%d %d\n",x,y);	
+			}*/
+		double deltax = x1 - x0;
+		double deltay = y1 - y0;
+		double dd = sqrt(deltax * deltax + deltay * deltay);
+		double tx = x0;
+		double ty = y0;
+		double l = 0;
+		while(l <= dd) {
+			tx += deltax / dd;
+			ty += deltay / dd;
+			//file << (int)tx << " " << (int)ty << " 3 0\n";
+			fprintf(file,"%f %f 3 0\n",tx,ty);
+			l = sqrt((tx - x0) * (tx - x0) + (ty - y0) * (ty - y0));
+		}
+
 	}
 
-	file.close();
+	fclose(file);
 
 	printf("Polygon interpolation: complete\n");
 
