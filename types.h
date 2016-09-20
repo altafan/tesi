@@ -51,8 +51,7 @@ typedef struct slab_ {
 typedef struct maps_ {
 	int ncols,nrows;
 	int esx,esy;
-	int minx_map,miny_map;
-	int maxx_map, maxy_map;
+	int2 min, max;
 	int slabs_nrows;
 	int dx,dy;
 	F* btm_map;
@@ -60,7 +59,7 @@ typedef struct maps_ {
 	int* host_info_x_m; 
 	int* host_info_y_m;
 	int tot_blocks, bound_blocks;
-	int first, last;
+	int first_slab, last_slab;
 	int dxs, dys;
 	F4* host_grid_multi;
 	unsigned char* host_grid_level_multi;

@@ -18,6 +18,7 @@ int2 min_xy;
 int2 s_max;
 int2 s_min;
 int npoints;
+int dbg = 1;
 
 void readBLN(string path) {
 
@@ -63,10 +64,7 @@ void readBLN(string path) {
 			pol_Mp.y = (int)pol.points[i].y;
 	}
 
-	/*printf("Bounding box corners:\n");
-	printf("v_min: (%d,%d) \n",(int)pol_mp.x,(int)pol_mp.y);
-	printf("v_max: (%d,%d) \n",(int)pol_Mp.x,(int)pol_Mp.y);*/
-	printf("polygon read\n");
+	if(dbg) printf("Polygon read\n\n");
 
 }
 
@@ -78,7 +76,6 @@ void blnInterpolation() {
 
 	//per ogni coppia di vertici interpolazione del segmento che li unisce
 	for(int i = 0; i < npoints; ++i) {
-	//int i=0; {
 		double x0,x1,y0,y1,m;
 		if(i == npoints - 1) {
 			x0 = pol.points[i].x;
@@ -91,21 +88,7 @@ void blnInterpolation() {
 			x1 = pol.points[i+1].x;
 			y1 = pol.points[i+1].y;
 		}
-		/*m = (y1-y0) / (x1-x0);
-
-		if(x1 > x0)
-			for(int x = x0; x < x1; x += 4) {
-				int y = (int)(m * (x - x0) + y0);
-				//printf("%d %d\n",x,y);
-				//file << x << " " << y << " 1 0\n";
-				printf("%d %d\n",x,y);
-			}
-		else
-			for(int x = x1; x < x0; x += 4) {
-				int y = (int)(m * (x - x1) + y1);
-				//file << x << " " << y << " 1 0\n";
-				printf("%d %d\n",x,y);	
-			}*/
+		
 		double deltax = x1 - x0;
 		double deltay = y1 - y0;
 		double dd = sqrt(deltax * deltax + deltay * deltay);
@@ -124,7 +107,7 @@ void blnInterpolation() {
 
 	fclose(file);
 
-	printf("Polygon interpolation: complete\n");
+	if(dbg) printf("Polygon interpolation complete\n\n");
 
 }
 
@@ -185,11 +168,13 @@ void readGRD(string path, int n_slab) {
 	min_xy.y = //(int)((pol_mp.y - s_min.y) / slabs.dy[0]) * slabs.dy[0] + s_min.y;
 	floor((((int)(pol_mp.y - s_min.y) / slabs.dy[0]) * slabs.dy[0] + s_min.y) / 10) * 10;
 	
-	printf("s_min: %d, %d\n", s_min.x, s_min.y);
-	printf("s_max: %d, %d\n", s_max.x, s_max.y);
-	printf("min_xy: %d, %d\n", min_xy.x, min_xy.y);
-	printf("dx dy: %d %d\n", slabs.dx[0], slabs.dy[0]);
-	printf("slabs read\n");
+	if(dbg) {
+		printf("Slabs read:\n");
+		printf("s_min: %d, %d\n", s_min.x, s_min.y);
+		printf("s_max: %d, %d\n", s_max.x, s_max.y);
+		printf("min_xy: %d, %d\n", min_xy.x, min_xy.y);
+		printf("dx dy: %d %d\n\n", slabs.dx[0], slabs.dy[0]);
+	}
 
 }
 
@@ -208,8 +193,6 @@ int countGRD(string path) {
 		exit(1);
 	}
 
-	printf("slab info read\n");
-
 	return n;
 
 }
@@ -220,8 +203,6 @@ void raster(int n_slab) {
 	int cols = (s_max.x - s_min.x) / slabs.dx[0] + 1;
 	int rows = (s_max.y - s_min.y) / slabs.dy[0] + 1;
 
-	printf("rows cols: %d %d\n", rows, cols);
-
 	int m[rows][cols];
 
 	//calcola gli indici della griglia di tavolette in cui cade il bounding box
@@ -229,9 +210,6 @@ void raster(int n_slab) {
 	int pmj = (pol_mp.x - s_min.x) / slabs.dx[0];
 	int pMi = rows - ((pol_mp.y - s_min.y)/slabs.dy[0]) ;
 	int pMj = ((int)(pol_Mp.x - s_min.x)) / slabs.dx[0];	
-
-	printf("pMi pmj: %d %d\n", pMi, pmj);
-	printf("pmi pMj: %d %d\n", pmi, pMj);
 
 	//per ogni tavoletta calcola gli indici (la posizione nella griglia) e controlla
 	//se sta nell'intervallo degli indici del boundig box
@@ -243,16 +221,6 @@ void raster(int n_slab) {
     		m[i][j] = k+1;
     	else 	
     		m[i][j] = 0;
-    }
-
-    printf("\nrasterizzation:\n");
-    for(int i = 0; i < rows; ++i){
-    	for(int j = 0; j < cols; ++j)
-    		if(m[i][j])
-    			printf("x ");
-    		else 
-    			printf("0 ");
-    	printf("\n");
     }
     
     // salva le info della matrice di tavolette interne al bounding box:
@@ -266,6 +234,20 @@ void raster(int n_slab) {
     file << cols * pmj + (rows - pMi) << " " << cols * pMj + (rows - pmi)<< "\n";
     file << slabs.dx[0] << " " << slabs.dy[0] << "\n";
     file.close();
+
+    if(dbg) { 
+		printf("Slab matrix - rows cols: %d %d\n", rows, cols);
+   		printf("Bounding box min  x,y: %d %d\n", pMi, pmj);
+		printf("Bounding box max x,y: %d %d\n\n", pmi, pMj);
+	    for(int i = 0; i < rows; ++i){
+	    	for(int j = 0; j < cols; ++j)
+	    		if(m[i][j])
+	    			printf("x ");
+	    		else 
+	    			printf("0 ");
+	    	printf("\n");
+	    }
+	}
 
 }
 
