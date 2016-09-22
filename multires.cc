@@ -149,7 +149,7 @@ void multires(string path) {
 				}
 	    }
     	
-	if(dbg) printf("\nProcessing %d seed points:\n\n",g.punti_m.size());
+	if(dbg) printf("\nProcessing %ld seed points:\n\n",g.punti_m.size());
 
     for(int i = 0; i < levels; i++) {
 		int sizex = bsx / (1<<i);
@@ -336,7 +336,10 @@ void multires(string path) {
 	map.host_info = (uchar4*) malloc(map.nrows * map.ncols * sizeof(uchar4));
 	int* counter = (int*) malloc(x_blocks * y_blocks * BLOCKSIZE_X * BLOCKSIZE_Y * sizeof(int));
 	int* assegnato = (int*) malloc(tot_blocks * sizeof(int*));
-	vector<int2> pt_list;
+	vector<point> r_pt_list;
+	vector<int4> pt_list_info;
+	vector<int4> queue;
+	vector<int4> queue0;
 
 	//inizializzo i vettori per memorizzare livello e ofs delle celle di bitmask 
 	for (int i = 0; i < levels; i++) {
@@ -384,18 +387,61 @@ void multires(string path) {
 			for(int y1 = 0; y1 < BLOCKSIZE_Y; y1++) 
 				for(int x1 = 0; x1 < BLOCKSIZE_X; x1++) {
 					int idx = (y_multi*BLOCKSIZE_Y+y1) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+x1);
-					int2 real_coord;
+
+					point real_coord;
+					int4 pt_info;
+
 
 					map.host_info[idx].x = 1;
 
 					real_coord.x = map.min.x + (BLOCKSIZE_X * x * map.dx) + x1 * map.dx * (1<<ii);
 					real_coord.y = map.min.y + (BLOCKSIZE_Y * y * map.dy) + y1 * map.dy * (1<<ii);
-					//printf("%d %d %d %d %d %d %d %d\n",x,y,x_multi,y_multi,coord.x,coord.y,codice,idx);
-					pt_list.push_back(real_coord);
+					pt_info.x = x1;
+					pt_info.y = y1;
+					pt_info.z = codice;
+					printf("%d %d %d %d %lf %lf %d %d\n",x,y,x_multi,y_multi,real_coord.x,real_coord.y,codice,idx);
+					r_pt_list.push_back(real_coord);
+					pt_list_info.push_back(pt_info);
 				}
 			assegnato[codice] = 1;
 		}
 	}
+
+	for(int pt_it = 0; pt_it < r_pt_list.size(); pt_it++) {
+		int numbc = 0;
+		int i_est = 0;			
+		int n = (int)g.punti_m.size();
+		point foo = r_pt_list[pt_it];
+		int4 foo_info = pt_list_info[pt_it];
+
+		int x_multi = foo_info.z % x_blocks;
+		int y_multi = foo_info.z / x_blocks;
+
+		int idx = (y_multi*BLOCKSIZE_Y+foo_info.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+foo_info.x);
+
+		for(int k = 0; k < n; k++) {  
+			if( (g.punti_m[k].x < foo.x && g.punti_m[(k+1)%n].x >= foo.x) ||
+			    (g.punti_m[k].x >= foo.x && g.punti_m[(k+1)%n].x < foo.x) ) {
+				numbc = 1;
+			  	F polyXi = g.punti_m[k % n].x;
+			  	F polyXj = g.punti_m[(k + 1) % n].x;
+			  	F polyYi = g.punti_m[k % n].y;
+			  	F polyYj = g.punti_m[(k+1) % n].y;
+			  	if(polyYi + (foo.x - polyXi) / (polyXj - polyXi) * (polyYj - polyYi) < foo.y)
+			    	i_est = 1 - i_est;
+			  	//printf("%d %d %f %f --> %d\n",i,j,polyYi+(xp-polyXi)/(polyXj-polyXi)*(polyYj-polyYi),yp,i_est);
+			}
+		}
+
+		if (i_est == 0 || numbc == 0) { //!condizione per celle con xp < min(xpoint) o xp > max(xpoint)
+			map.host_info[idx].x = BIT_EXTERN;
+			queue.push_back(foo_info);
+		}
+		else {
+			map.host_info[idx].x = 0; 
+			queue0.push_back(foo_info);
+		}
+    }
 
 	printf("Multiresolution matrix size: %d\n",x_blocks * y_blocks * BLOCKSIZE_X * BLOCKSIZE_Y);
 

@@ -32,6 +32,10 @@ typedef struct int2_ {
 	int x,y;
 } int2;
 
+typedef struct int4_ {
+	int x,y,z,w;
+} int4;
+
 typedef struct ushort2_ {
 	unsigned short x,y;
 } ushort2;
