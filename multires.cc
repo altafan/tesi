@@ -10,7 +10,8 @@ using namespace std;
 
 maps map;
 global g;
-int dbg = 1;
+polygon pol;
+int dbg = 0;
 
 void read_map(string path) {
 	
@@ -69,6 +70,37 @@ void read_pts(string path) {
 	file.close();
 	
 	if(dbg) printf("\nFile %s read\n\n",path.c_str());
+
+}
+
+void readBLN(string path) {
+
+	string pathBLN = path+".BLN";
+	int npoints;
+
+	ifstream file(pathBLN);
+
+	//legge poligono da file
+	if(!file.fail()) {
+		file >> npoints;
+		pol.points.resize(npoints);
+		pol.edges.resize(npoints);
+		int i = 0;
+
+		while(!file.eof()) {
+			file >> pol.points[i].x;
+			file >> pol.points[i].y;
+			file >> pol.edges[i];
+			++i;
+		}
+	} else{
+		printf("Unable to open file. %s not found.\n\n", pathBLN.c_str());
+		exit(1);
+	}
+
+	file.close();
+
+	if(dbg) printf("Polygon read\n\n");
 
 }
 
@@ -299,7 +331,7 @@ void multires(string path) {
 				printf("\n");
 			}
     	}
-
+}
     	for(int i = 0; i < levels; i++){
 			int sizex = bsx / (1<<i);
 			int sizey = bsy / (1<<i);
@@ -317,7 +349,7 @@ void multires(string path) {
 		}
 
 		printf("\nCelle %d, bound %d\n\n",tot_blocks,bound_blocks);
-  	}
+  	//}
 	
 	map.tot_blocks = tot_blocks;
 	map.bound_blocks = bound_blocks;
@@ -334,6 +366,7 @@ void multires(string path) {
     map.host_ofs_blocks = (ushort2*) malloc(tot_blocks * sizeof(ushort2));
 	map.host_grid_multi = (F4*) malloc(x_blocks * y_blocks * BLOCKSIZE_X * BLOCKSIZE_Y * sizeof(F4));
 	map.host_info = (uchar4*) malloc(map.nrows * map.ncols * sizeof(uchar4));
+	map.neigh = (neigh_t*) malloc(8 * tot_blocks * sizeof(neigh_t));
 	int* counter = (int*) malloc(x_blocks * y_blocks * BLOCKSIZE_X * BLOCKSIZE_Y * sizeof(int));
 	int* assegnato = (int*) malloc(tot_blocks * sizeof(int*));
 	vector<point> r_pt_list;
@@ -342,7 +375,7 @@ void multires(string path) {
 	vector<int4> queue0;
 
 	//inizializzo i vettori per memorizzare livello e ofs delle celle di bitmask 
-	for (int i = 0; i < levels; i++) {
+	for(int i = 0; i < levels; i++) {
 		int sizex = bsx / (1 << i);
 		int sizey = bsy / (1 << i);
 		for (int y = 0; y < sizey; y++)
@@ -366,6 +399,101 @@ void multires(string path) {
     //tutti i blocchi in pt_list
     for(int i = 0; i < tot_blocks; i++) 
     	assegnato[i] = 0;
+
+    // esploro vicini
+    // formato
+    // codice spostamento per trovare l'amico: 0 (-1,-1), 1 (0 -1), 2 (1 -1), 3(-1 0), 4 (1 0), 5 (-1 1), 6 (0 1), 7 (1 1)
+    // livello di multires: -1, 0, 1 (delta per raggiungere il livello amico)
+    // codice vicino n1 (-1 muro)
+    // info aggiuntiva n2: se livello  1 -->  quadrante del quadrato amico (codifica x+2*y, 0 (0 0) 1(1 0) 2 (0 1) 3 (1 1))
+    //                     se livello -1 e amico non e' corner -->  secondo quadrato adiacente
+
+    for(int i = 0; i < levels; i++) {
+    	//int dbg = 0;
+		int sizex = bsx / (1 << i);
+		int sizey = bsy / (1 << i);
+		for(int y = 0; y < sizey; y++)
+	  		for(int x = 0; x < sizex; x++)
+	    		if(bitmask[i][sizex * y + x] == i + 1){
+	      			int side = 0;
+	      			for(int dy = -1; dy <= 1; dy++)
+	      				for(int dx = -1; dx <= 1; dx++)
+							if(dx != 0 || dy != 0){
+								int nx = x + dx;
+							  	int ny = y + dy;
+							  	int idx = 8 * bitmaskC[i][sizex * y + x] + side;
+							  	if (nx < 0 || nx >= sizex ||
+							      	ny < 0 || ny >= sizey ||
+							      	bitmask[i][sizex * ny + nx] == -1) { // quadrato fuori
+							    	map.neigh[idx].lev = 0;
+							    	map.neigh[idx].n1 = -1;
+							    	map.neigh[idx].n2 = -1;
+							    	if(dbg) 
+							      		printf("%d %d %d (%d %d), %d: %d %d [%d, %d]\n",i,x,y,dx,dy,bitmaskC[i][sizex*y+x],side,0,-1,-1); // muro
+							  	}
+		  						else {
+								    if(bitmask[i][sizex * ny + nx] == i + 2){ //multires dopo, uso secondo posto per indicare se 0 (prima meta') o 1 (seconda meta' di adiacenza)
+									    int bit = -1;
+									    bit = (nx % 2) + 2 * (ny % 2);
+									    map.neigh[idx].lev = 1;
+									    map.neigh[idx].n1 = bitmaskC[i + 1][sizex / 2 * (ny / 2) + (nx / 2)];
+									    map.neigh[idx].n2 = bit;
+									    if(dbg)
+									    	printf("%d %d %d (%d %d), %d: %d %d [%d, %d]\n",i,x,y,dx,dy,bitmaskC[i][sizex*y+x],
+										    	side,
+										     	1,
+										     	bitmaskC[i+1][sizex/2*(ny/2)+(nx/2)],
+										     	bit);
+									}
+								    else {
+								    	if(i == 0) { // primo livello non scendo, non ci sono ulteriori livelli
+								      		map.neigh[idx].lev = 0;
+								      		map.neigh[idx].n1 = bitmaskC[i][sizex * ny + nx];
+								      		map.neigh[idx].n2 = -1; // non usata
+											if(dbg)
+			  									printf("%d %d %d (%d %d), %d: %d %d %d\n",i,x,y,dx,dy,bitmaskC[i][sizex*y+x],side,0,bitmaskC[i][sizex*(ny)+(nx)]);
+		      							}
+		      							else { // guardo il livello precedente
+											int ex = x * 2;
+											int ey = y * 2;
+											if(dx < 0) ex--;// adiacente sx, scavalco quadrato
+											if(dy < 0) ey--;
+											if(dx > 0) ex += 2; // adiacente destro, +1 per vicino nello stesso quad (a ris i) +1 scavalco quadrato
+											if(dy > 0) ey += 2; // adiacente destro, +1 per vicino nello stesso quad (a ris i) +1 scavalco quadrato
+											int ex1,ey1; // secondario (usato se si va a livello -1
+											ex1 = ex;
+											ey1 = ey;
+											if(dx == 0) ex1++; // sopra o sotto, uso anche cella adiacente a destra
+											if(dy == 0) ey1++; // sx o dx, uso anche cella adiacente +1			  
+											if(bitmask[i - 1][sizex * 2 * ey + ex] == i + 1) { // mio livello (garantisco che era tutto il quadrato dello stesso livello)
+										  		map.neigh[idx].lev = 0;
+											  	map.neigh[idx].n1 = bitmaskC[i][sizex * ny + nx];
+											  	map.neigh[idx].n2 = -1; // non usata			  
+											  	if(dbg)
+											    	printf("%d %d %d (%d %d), %d: %d %d [%d, %d]\n",i,x,y,dx,dy,bitmaskC[i][sizex*y+x],side,0,bitmaskC[i][sizex*(ny)+(nx)],-1);
+											}
+											else {
+												int bit = -1;
+											  	if(dx * dy == 0) // quando non diagonale, metto il secondo quadrato
+											    	bit = bitmaskC[i-1][sizex * 2 * ey1 + ex1];
+											  		map.neigh[idx].lev = -1;
+											  		map.neigh[idx].n1 = bitmaskC[i - 1][sizex * 2 * ey + ex];
+											  		map.neigh[idx].n2 = bit; 
+											  		if(dbg)
+											    		printf("%d %d %d (%d %d), %d: %d %d [%d, %d]\n",i,x,y,dx,dy,bitmaskC[i][sizex*y+x],side,-1,
+												   			bitmaskC[i-1][sizex*2*(ey)+(ex)],
+												   			bit
+												   		);
+											}
+		      							}
+		      
+		    						}
+		  						}
+		  						side++;
+							}
+	      
+	   		 	}
+    }
 
     //per ogni punto di ogni retta ricavo il blocco a cui appartiene e aggiungo tutto il blocco a pt_list 
     for(int i = 0; i < g.punti_m.size(); i++) {
@@ -399,7 +527,7 @@ void multires(string path) {
 					pt_info.x = x1;
 					pt_info.y = y1;
 					pt_info.z = codice;
-					printf("%d %d %d %d %lf %lf %d %d\n",x,y,x_multi,y_multi,real_coord.x,real_coord.y,codice,idx);
+					//printf("%d %d %d %d %lf %lf %d %d\n",x,y,x_multi,y_multi,real_coord.x,real_coord.y,codice,idx);
 					r_pt_list.push_back(real_coord);
 					pt_list_info.push_back(pt_info);
 				}
@@ -410,7 +538,7 @@ void multires(string path) {
 	for(int pt_it = 0; pt_it < r_pt_list.size(); pt_it++) {
 		int numbc = 0;
 		int i_est = 0;			
-		int n = (int)g.punti_m.size();
+		int n = (int)pol.points.size();
 		point foo = r_pt_list[pt_it];
 		int4 foo_info = pt_list_info[pt_it];
 
@@ -420,28 +548,163 @@ void multires(string path) {
 		int idx = (y_multi*BLOCKSIZE_Y+foo_info.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+foo_info.x);
 
 		for(int k = 0; k < n; k++) {  
-			if( (g.punti_m[k].x < foo.x && g.punti_m[(k+1)%n].x >= foo.x) ||
-			    (g.punti_m[k].x >= foo.x && g.punti_m[(k+1)%n].x < foo.x) ) {
+			if( (pol.points[k].x < foo.x && pol.points[(k+1)%n].x >= foo.x) ||
+			    (pol.points[k].x >= foo.x && pol.points[(k+1)%n].x < foo.x) ) {
 				numbc = 1;
-			  	F polyXi = g.punti_m[k % n].x;
-			  	F polyXj = g.punti_m[(k + 1) % n].x;
-			  	F polyYi = g.punti_m[k % n].y;
-			  	F polyYj = g.punti_m[(k+1) % n].y;
+			  	F polyXi = pol.points[k % n].x;
+			  	F polyXj = pol.points[(k + 1) % n].x;
+			  	F polyYi = pol.points[k % n].y;
+			  	F polyYj = pol.points[(k + 1) % n].y;
 			  	if(polyYi + (foo.x - polyXi) / (polyXj - polyXi) * (polyYj - polyYi) < foo.y)
 			    	i_est = 1 - i_est;
-			  	//printf("%d %d %f %f --> %d\n",i,j,polyYi+(xp-polyXi)/(polyXj-polyXi)*(polyYj-polyYi),yp,i_est);
+			  	//printf("%f %lf --> %d\n",polyYi+(foo.x-polyXi)/(polyXj-polyXi)*(polyYj-polyYi),foo.y,i_est);
 			}
 		}
 
 		if (i_est == 0 || numbc == 0) { //!condizione per celle con xp < min(xpoint) o xp > max(xpoint)
-			map.host_info[idx].x = BIT_EXTERN;
+			//map.host_info[idx].x = BIT_EXTERN;
 			queue.push_back(foo_info);
 		}
 		else {
-			map.host_info[idx].x = 0; 
+			//map.host_info[idx].x = 0; 
 			queue0.push_back(foo_info);
 		}
     }
+
+    while(queue.size() > 0) {
+	    int4 foo = queue[queue.size() - 1];
+	    queue.erase(queue.end() - 1);
+
+	    int x_multi = foo.z % x_blocks;
+		int y_multi = foo.z / x_blocks;
+		int idx = (y_multi*BLOCKSIZE_Y+foo.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+foo.x);
+		//printf("%d %d %d %d\n", foo.z, foo.x,foo.y,map.host_info[idx].x);
+
+		if(map.host_info[idx].x != BIT_EXTERN) {
+			//printf("aaa");
+		    map.host_info[idx].x = BIT_EXTERN;
+
+		    //aggiungo vicini alla coda
+
+		    int dx = 0;
+		  	int dy = 0;
+		  	int sh = 0;																																																																																																																																																																																														
+		  	int ox = 0;
+		  	int oy = 0;
+
+		  	// quale rappresenta la posizione del vicino: 0 -> N, 1 -> S, 2 -> W, 3 -> E
+		  	//if(foo.z == 209)
+		  	for(int quale = 0; quale < 4; quale++) {
+			  	switch(quale){
+			  		case 0: {dy = 1; sh = 6; ox = foo.x; oy = 0;} break;
+			  		case 1: {dy = -1; sh = 1; ox = foo.x; oy = BLOCKSIZE_Y - 1;} break;
+			  		case 2: {dx = -1; sh = 3; ox = BLOCKSIZE_X - 1; oy = foo.y;} break;
+			  		case 3: {dx = 1; sh = 4; ox = 0; oy = foo.y;} break;
+			  	}
+
+			  	if ((quale == 0 && foo.y < BLOCKSIZE_Y - 1) ||
+		      		(quale == 1 && foo.y > 0) ||
+		      		(quale == 2 && foo.x > 0) ||
+		      		(quale == 3 && foo.x < BLOCKSIZE_X - 1)) { // sono dentro quadrato corrente -> prelevo valore
+			  			int4 pt;
+			  			pt.x = ox;
+			  			pt.y = oy;
+			  			pt.z = foo.z;
+			  			queue.push_back(pt);
+			  			//printf("AAA %d\n",pt.z);	    	
+		  		}else {
+				    neigh_t neigh = map.neigh[8 * foo.z + sh];
+				    char lev = neigh.lev;
+				    //printf("%d\n",neigh.n1);
+				    if(neigh.n1 != -1)
+					    switch(lev) {
+					    	int4 pt1;
+					    	int base;
+
+					    	case 0: //blocco vicino è alla stessa risoluzione del blocco corrente      
+					      		pt1.x = ox;
+					      		pt1.y = oy;
+					      		pt1.z = neigh.n1;
+					      		queue.push_back(pt1);
+					      		//printf("0 BBB %d %d %d\n",pt1.z,pt1.x,pt1.y);
+					      		break;
+
+					      	case -1: //il blocco vicino è a risoluzione piu' alta del blocco corrente
+				          			 //A.F.: prendo il vicino n1 o n2 in base alla posizione della cella nel blocco corrente
+					      		int4 pt2;
+
+					      		pt1.x = 0;
+					      		pt1.y = 0;
+					      		pt1.z = neigh.n1;
+					      		pt2.x = 0;
+					      		pt2.y = 0;
+					      		pt2.z = neigh.n2;
+
+					      		//queue.push_back(pt1);
+					      		//queue.push_back(pt2);
+					      		//printf("-1 CCC %d %d\n",pt1.z,pt2.z);
+
+					      		break;
+
+					      	case 1:
+					      		pt1.x = ox;
+					      		pt1.y = oy;
+					      		pt1.z = neigh.n1;
+					      		queue.push_back(pt1);
+					      		//printf("1 DDD %d %d %d\n",pt1.z,pt1.x,pt1.y);
+
+					      		break;
+					      		/*if ((quale <= 1 && foo.x < BLOCKSIZE_X / 2) || // pesco su dim corretta!
+						  			(quale > 1 && foo.y < BLOCKSIZE_Y / 2)) 
+									pt1.z = neigh.n1;
+					      		else
+									pt1.z = neigh.n2;
+						      	//per costruzione idx >=0 (cioe' esiste, altrimenti trovavo muro!)
+					    	  	//posizione*2, calcolo direttamente indice del quadrato corretto
+							  	//A.F.: base è l'indice della prima cella (delle due visto che ho ris maggiore) che devo prendere sul blocco vicino (*2 perchè ho ris maggiore con il doppio di celle)
+						      	if (quale <= 1)
+						      		base = (foo.x * 2) % BLOCKSIZE_X;
+						      	else
+							      	base = (foo.y * 2) % BLOCKSIZE_Y;
+
+					       		// unico caso in cui ho 2 valori in output, carico other e other_
+								switch(quale){
+									case 0: {ox1 = base; oy1 = 0;} break;
+									case 1: {ox1 = base; oy1 = BLOCKSIZE_Y - 1;} break;
+									case 2: {ox1 = BLOCKSIZE_X - 1; oy1 = base;} break;
+									case 3: {ox1 = 0; oy1 = base;} break;
+								}*/
+					      		
+					    }
+				}
+			}
+		}
+  	}
+
+  /*while (queue0.size()>0){
+    int2 foo=queue0[queue0.size()-1];
+    //    printf("-%4d--0> %d %d\n",queue0.size(),foo.x,foo.y);
+    queue0.erase(queue0.end()-1);
+      maps.host_info[foo.y * ncol + foo.x].x=0;
+    //aggiungi neigh
+    int2 n;
+    n.x=foo.x+1;n.y=foo.y+0;if (n.x<ncol && maps.host_info[n.y * ncol + n.x].x==1){
+      maps.host_info[n.y * ncol + n.x].x=0;
+      queue0.push_back(n);
+    }
+    n.x=foo.x-1;n.y=foo.y+0;if (n.x>=0 && maps.host_info[n.y * ncol + n.x].x==1){
+      maps.host_info[n.y * ncol + n.x].x=0;
+      queue0.push_back(n);
+    }
+    n.x=foo.x;n.y=foo.y+1;if (n.y<nrow && maps.host_info[n.y * ncol + n.x].x==1){
+      maps.host_info[n.y * ncol + n.x].x=0;
+      queue0.push_back(n);
+    }
+    n.x=foo.x;n.y=foo.y-1;if (n.y>=0 && maps.host_info[n.y * ncol + n.x].x==1){
+      maps.host_info[n.y * ncol + n.x].x=0;
+      queue0.push_back(n);
+    }
+  }*/
 
 	printf("Multiresolution matrix size: %d\n",x_blocks * y_blocks * BLOCKSIZE_X * BLOCKSIZE_Y);
 
@@ -540,12 +803,13 @@ void multires(string path) {
 int main() {
 	
 	string map_file = "map_info.txt";
-	//string bln_file = "polygons/bln_raster.PTS";
+	string bln_file = "polygons/bln2";
 	string pts_file = "polygons/bln_raster.PTS";
 	string path = "slabs/";
 
 	read_map(map_file);
 	read_pts(pts_file);
+	readBLN(bln_file);
 	multires(path);
 
 	return 0;

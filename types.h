@@ -40,6 +40,12 @@ typedef struct ushort2_ {
 	unsigned short x,y;
 } ushort2;
 
+typedef struct {
+	char lev;
+  	int n1;
+  	int n2;
+} neigh_t;
+
 typedef struct polygon_ {
 	vector<point> points;
   	vector<int> edges;    
@@ -68,6 +74,7 @@ typedef struct maps_ {
 	F4* host_grid_multi;
 	unsigned char* host_grid_level_multi;
 	ushort2* host_ofs_blocks;
+	neigh_t* neigh;
 } maps;
 
 typedef struct global_ {
