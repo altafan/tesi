@@ -76,19 +76,12 @@ void blnInterpolation() {
 
 	// per ogni coppia di vertici interpolazione del segmento che li unisce
 	for(int i = 0; i < npoints; ++i) {
-		double x0,x1,y0,y1,m;
+		double x0,x1,y0,y1;
 
-		if(i == npoints - 1) { // ultimo punto in coppia col primo per chiudere il poligono
-			x0 = pol.points[i].x;
-			y0 = pol.points[i].y;
-			x1 = pol.points[0].x;
-			y1 = pol.points[0].y;
-		} else {
-			x0 = pol.points[i].x;
-			y0 = pol.points[i].y;
-			x1 = pol.points[i+1].x;
-			y1 = pol.points[i+1].y;
-		}
+		x0 = pol.points[i].x;
+		y0 = pol.points[i].y;
+		x1 = pol.points[(i+1) % npoints].x;
+		y1 = pol.points[(i+1) % npoints].y;
 		
 		double deltax = x1 - x0;
 		double deltay = y1 - y0;

@@ -12,6 +12,8 @@ maps map;
 global g;
 polygon pol;
 int dbg = 0;
+int BLOCKSIZE_X = 16;
+int BLOCKSIZE_Y = 16;
 
 void read_map(string path) {
 	
@@ -91,6 +93,7 @@ void readBLN(string path) {
 			file >> pol.points[i].x;
 			file >> pol.points[i].y;
 			file >> pol.edges[i];
+			//printf("%d %lf %lf\n",i,pol.points[i].x,pol.points[i].y);
 			++i;
 		}
 	} else{
@@ -104,15 +107,55 @@ void readBLN(string path) {
 
 }
 
-void get_neigh(int codice, int x, int y, neigh_t* neighs, uchar4* host_info, int quale, int& other, int& other_, int& secondo) {
+int assign_bc(F xp, F yp) {
+
+  	// restituisce -1 se non c'era condizione (es bordo dovuto a btm)
+  	// in questo caso si mette muro!
+  	int numbc;  
+  	F seglung, alpha, xp_p, yp_p, xp_pp, yp_pp, dist, dist_min;
+  
+  	dist_min = 1.E16;
+  	numbc = -9999;
+
+  	for(int i = 0; i < 1; i++)
+    	for (int k = 0;k < (int)pol.points.size(); k++) {
+	      	int n = (int)pol.points.size();
+	      	F deltax = pol.points[(k + 1) % n].x - pol.points[k].x;
+	      	F deltay = pol.points[(k + 1) % n].y - pol.points[k].y;
+	      	seglung = pow(deltax * deltax + deltay * deltay, 0.5f);
+
+	      	//rotate
+	      	alpha = atan2(deltay,deltax);
+	      	xp_p = xp - pol.points[k].x;
+	      	yp_p = yp - pol.points[k].y;
+	      	xp_pp = xp_p * cos(alpha) + yp_p * sin(alpha);
+	      	yp_pp = - xp_p * sin(alpha) + yp_p*cos(alpha);          
+	      	dist = fabs(yp_pp);
+
+	      	if ( xp_pp > 0 && xp_pp < seglung && dist < dist_min ) {
+				numbc = k;
+				dist_min = dist;
+		  	}  
+		}
+  
+	if (numbc == -9999)
+    	return -1;
+
+  	return numbc;
+
+}
+
+void get_neigh(int codice, int x, int y, neigh_t* neighs, int quale, int& other, int& other_, int& secondo, int x_blocks) {
+  	
   	//quale: 0 = N, 1 = S, 2 = W, 3 = E
-  								  
+  	int x_multi = codice % x_blocks;//sceglie vicino
+	int y_multi = codice / x_blocks;//sceglie vicino						  
   	int dx = 0;
   	int dy = 0;
   	int sh = 0;
   	int ox = 0,oy = 0; // punto da prelevare su altro quadrato
   				   //A.F.: ox,oy: offset x trovare cella su blocco vicino come se fosse a stessa risoluzione 
-  	switch(quale){
+  	switch(quale) {
   		case 0: {dy = 1; sh = 6; ox = x; oy = 0;} break;
   		case 1: {dy = -1; sh = 1; ox = x; oy = BLOCKSIZE_Y - 1;} break;
   		case 2: {dx = -1; sh = 3; ox = BLOCKSIZE_X- 1 ; oy = y;} break;
@@ -121,79 +164,74 @@ void get_neigh(int codice, int x, int y, neigh_t* neighs, uchar4* host_info, int
 
   	secondo = 0; // di default non c'e' un secondo valore in output
 
-  	if ((quale == 0 && y < BLOCKSIZE_Y - 1) ||
-      	(quale == 1 && y > 0) ||
-      	(quale == 2 && x > 0) ||
-      	(quale == 3 && x < BLOCKSIZE_X - 1)) { // sono dentro quadrato corrente -> prelevo valore
-	    
-
+  	if((quale == 0 && y < BLOCKSIZE_Y - 1) ||
+       (quale == 1 && y > 0) ||
+       (quale == 2 && x > 0) ||
+       (quale == 3 && x < BLOCKSIZE_X - 1)) { // sono dentro quadrato corrente -> prelevo valore
+  			x += dx;
+  			y += dy;
+  			other = (y_multi*BLOCKSIZE_Y+y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+x);
+  			//printf("in - %d %d %d\n",x,y,other);
   	}else { // sono su bordo blocco quindi esco da quadrato corrente: ho bisogno del blocco vicino 
 	        // A.F.: neigh è array dove x ogni blocco ho info sugli 8 blocchi vicini (liv ris,codice vicino n1, n2)
 	    neigh_t neigh = neighs[8 * codice + sh];                 
-	    char lev = neigh.lev;
-	    int ox1,oy1;
+	    char lev = neigh.lev;;
+	    if(neigh.n1 != -1)
+		    switch(lev) {
+		      	int base,base2,x_multi2,y_multi2,ox1,oy1;
 
-	    switch(lev) {
-	      	int x_multi;//sceglie vicino
-	      	int y_multi;//sceglie vicino
-	      	int base;
+		    	case 0: //blocco vicino è alla stessa risoluzione del blocco corrente	      
+		      		x_multi = neigh.n1 % x_blocks;
+		      		y_multi = neigh.n1 / x_blocks;
+		      		other = (y_multi*BLOCKSIZE_Y+oy) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+ox);
 
-	    	case 0: //blocco vicino è alla stessa risoluzione del blocco corrente	      
-	      		x_multi = neigh.n1 % x_blocks;
-	      		y_multi = neigh.n1/ x_blocks;
-		  		break;
-	    	case -1: //il blocco vicino è a risoluzione piu' alta del blocco corrente
-          			 //A.F.: prendo il vicino n1 o n2 in base alla posizione della cella nel blocco corrente
-	      		if ((quale <= 1 && x < BLOCKSIZE_X / 2) || // pesco su dim corretta!
-		  			(quale > 1 && y < BLOCKSIZE_Y / 2)){
+			  		break;
+		    	case -1: 
+	    			x_multi2 = neigh.n2 % x_blocks;
+					y_multi2 = neigh.n2 / x_blocks;
+	      			base2 = (y * 2) % BLOCKSIZE_Y;
+
+	      			base = (x * 2) % BLOCKSIZE_X;
 					x_multi = neigh.n1 % x_blocks;
 					y_multi = neigh.n1 / x_blocks;
-	      		}
-	      		else{
-					x_multi = neigh.n2 % x_blocks;
-					y_multi = neigh.n2 / x_blocks;
-			    }
-	     		//per costruzione idx >=0 (cioe' esiste, altrimenti trovavo muro!)
-	      		//posizione*2, calcolo direttamente indice del quadrato corretto
-		  		//A.F.: base è l'indice della prima cella (delle due visto che ho ris maggiore) che devo prendere sul 		  blocco vicino (*2 perchè ho ris maggiore con il doppio di celle)
-	      		if (quale <= 2)
-	      			base = (x * 2) % BLOCKSIZE_X;
-	      		else
-	      			base = (y * 2) % BLOCKSIZE_Y;
+					
+		      		secondo = 1; // unico caso in cui ho 2 valori in output, carico other e other_
 
-	      		secondo = 1; // unico caso in cui ho 2 valori in output, carico other e other_
+					switch(quale) {
+						case 0: {ox1 = base; oy1 = 0;} break;
+						case 1: {ox1 = base; oy1 = BLOCKSIZE_Y - 1;} break;
+						case 2: {ox1 = BLOCKSIZE_X - 1; oy1 = base;} break;
+						case 3: {ox1 = 0; oy1 = base;} break; 		  
+			  		}
 
-				switch(quale) {
-					case 0: {ox1 = base; oy1 = 0;} break;
-					case 1: {ox1 = base; oy1 = BLOCKSIZE_Y - 1;} break;
-					case 2: {ox1 = BLOCKSIZE_X - 1; oy1 = base;} break;
-					case 3: {ox1 = 0; oy1 = base;} break; 		  
-		  		}
-		  
-	      		break;	
-	    	case 1:  //il blocco vicino è a risoluzione piu bassa del blocco corrente
-	      			 // info aggiuntiva n2: se livello  1 -->  quadrante del quadrato amico (codifica x+2*y, 0 (0 0) 1(1 0) 2 (0 1) 3 (1 1))
-          			 //A.F.: n2 è diverso rispetto al caso precedente (case -1). C'è divisione fittizia del blocco vicino in 4 quadranti: n2 contiene info sul quadrante da prendere
-		      	x_multi = neigh.n1 % x_blocks;        //A.F.: blocco vicino qui è solo n1
-		      	y_multi = neigh.n1 / x_blocks;
+			  		other = (y_multi*BLOCKSIZE_Y+oy1) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+ox1);
+			  		other_ = (y_multi*BLOCKSIZE_Y+oy1+(quale > 1)) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+ox1+(quale <= 1));
 
-	      		if (quale <= 1)
-					base = (x / 2) + neigh.n2 % 2 * BLOCKSIZE_X / 2;
-	      		else
-					base = (y / 2) + neigh.n2 / 2 * BLOCKSIZE_Y / 2;
+		      		break;	
+		    	case 1:  //il blocco vicino è a risoluzione piu bassa del blocco corrente
+		      			 // info aggiuntiva n2: se livello  1 -->  quadrante del quadrato amico (codifica x+2*y, 0 (0 0) 1(1 0) 2 (0 1) 3 (1 1))
+	          			 //A.F.: n2 è diverso rispetto al caso precedente (case -1). C'è divisione fittizia del blocco vicino in 4 quadranti: n2 contiene info sul quadrante da prendere
+			      	x_multi = neigh.n1 % x_blocks;        //A.F.: blocco vicino qui è solo n1
+			      	y_multi = neigh.n1 / x_blocks;
 
-	      		int ox1,oy1;
+		      		if(quale <= 1)
+						base = (x / 2) + neigh.n2 % 2 * BLOCKSIZE_X / 2;
+		      		else
+						base = (y / 2) + neigh.n2 / 2 * BLOCKSIZE_Y / 2;
 
-			    switch(quale) {
-			      	case 0: {ox1 = base; oy1 = 0;} break;
-			      	case 1: {ox1 = base; oy1 = BLOCKSIZE_Y - 1;} break;
-			      	case 2: {ox1 = BLOCKSIZE_X - 1; oy1 = base;} break;
-			      	case 3: {ox1 = 0; oy1 = base;} break;
-			    }
+				    switch(quale) {
+				      	case 0: {ox1 = base; oy1 = 0;} break;
+				      	case 1: {ox1 = base; oy1 = BLOCKSIZE_Y - 1;} break;
+				      	case 2: {ox1 = BLOCKSIZE_X - 1; oy1 = base;} break;
+				      	case 3: {ox1 = 0; oy1 = base;} break;
+				    }
 
-	      		break;
-	    }
+				    other = (y_multi*BLOCKSIZE_Y+oy1) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+ox1);
+
+		      		break;
+		    }
 	}
+
 }
 
 void multires(string path) {
@@ -202,8 +240,6 @@ void multires(string path) {
 	
     int sx = map.ncols;
     int sy = map.nrows;
-    int BLOCKSIZE_X = 16;
-    int BLOCKSIZE_Y = 16;
     int levels = 4; // livelli di multirisoluzione
     int lblock = (1 << (levels - 1));
     int hi = 0;  
@@ -239,17 +275,17 @@ void multires(string path) {
 
 		bitmask[i] = (char *) malloc(size * sizeof(char));
 		bitmaskC[i] = (int *) malloc(size * sizeof(int));
-		bitmaskS[i] = (uchar4 *) malloc(size * sizeof(uchar4));
+		//bitmaskS[i] = (uchar4 *) malloc(size * sizeof(uchar4));
 
 		for(int j = 0; j < size; j++) {
 	  		bitmask[i][j] = 0;
 	  		bitmaskC[i][j] = -1;
-	  		bitmaskS[i][j].x = 0;	 
+	  		/*bitmaskS[i][j].x = 0;	 
 	  		bitmaskS[i][j].y = 0;	 
 	  		bitmaskS[i][j].z = 0;	 
-	  		bitmaskS[i][j].w = 0;	 
+	  		bitmaskS[i][j].w = 0;*/ 
 		} 
-
+		/*
 		int nx = map.ncols;
 		int ny = map.nrows;
 
@@ -260,8 +296,9 @@ void multires(string path) {
 		
 		if (i == 0) // caso livello 0, metto direttamente dentro
 	  		Z = (F*) malloc(nx * ny * sizeof(F));
+	  	*/
     }
-    
+    /*
     if(hi) // speciale: se tutto ad alta risoluzione
 	    for(int y = 1; y < sy + 1; y++){  
 			for(int x = 1; x < sx + 1; x++)
@@ -272,6 +309,7 @@ void multires(string path) {
 				    bitmask[0][bsx*by+bx] = 1;
 				}
 	    }
+	*/
     	
 	if(dbg) printf("\nProcessing %ld seed points:\n\n",g.punti_m.size());
 
@@ -290,7 +328,8 @@ void multires(string path) {
 					x = x / (1<<i) * (1<<i);
 					y = y / (1<<i) * (1<<i);
 
-					//printf("Force level %d point %f %f --> %d %d (%d %d)\n",(int)g.punti_m[i1].z,g.punti_m[i1].x,g.punti_m[i1].y,x,y,bsx,bsy);
+					if(dbg) printf("Force level %d point %f %f --> %d %d (%d %d)\n",(int)g.punti_m[i1].z,g.punti_m[i1].x,g.punti_m[i1].y,x,y,bsx,bsy);
+					
 					for(int ii = 0; ii < (1<<i); ii++)
 						for(int jj = 0; jj < (1<<i); jj++)
 							if(x + ii >= 0 && x + ii < bsx && y + jj >= 0 && y + jj < bsy)
@@ -423,7 +462,7 @@ void multires(string path) {
 				printf("\n");
 			}
     	}
-	}
+	
     	for(int i = 0; i < levels; i++){
 			int sizex = bsx / (1<<i);
 			int sizey = bsy / (1<<i);
@@ -441,7 +480,7 @@ void multires(string path) {
 		}
 
 		printf("\nCelle %d, bound %d\n\n",tot_blocks,bound_blocks);
-  	//}
+  	}
 	
 	map.tot_blocks = tot_blocks;
 	map.bound_blocks = bound_blocks;
@@ -453,7 +492,7 @@ void multires(string path) {
   		printf("------------------------------------------------------\n\n");
 		printf ("Blocks %d alloc: %d x %d array \n",tot_blocks,x_blocks,y_blocks);
 	}
-
+	printf("Multiresolution matrix size: %d\n",x_blocks * y_blocks * BLOCKSIZE_X * BLOCKSIZE_Y);
 	map.host_grid_level_multi = (unsigned char*) malloc(tot_blocks * sizeof(unsigned char));
     map.host_ofs_blocks = (ushort2*) malloc(tot_blocks * sizeof(ushort2));
 	map.host_grid_multi = (F4*) malloc(x_blocks * y_blocks * BLOCKSIZE_X * BLOCKSIZE_Y * sizeof(F4));
@@ -483,10 +522,14 @@ void multires(string path) {
 	}	
 
 	// iniziallizzo host_info 
-	for (int i = 0; i < map.ncols; i++)
-    	for (int j = 0; j < map.nrows; j++) {
-      		map.host_info[i + map.ncols * j].x = 0;
-    	}
+	for(int i = 0; i < tot_blocks; i++)
+		for(int y = 0; y < BLOCKSIZE_Y; y++)
+			for(int x = 0; x < BLOCKSIZE_X; x++) {
+				int x_multi = i % x_blocks;
+				int y_multi = i / x_blocks;
+				int idx = (y_multi*BLOCKSIZE_Y+y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+x); 
+				map.host_info[idx].x = ZERO; // valore fittizio, 0 significa dentro al poligono!
+			}
 
     // inizializzo a false un array di dimensione tot_blocks per controllare di caricare una sola volta 
     // tutti i blocchi in pt_list
@@ -603,17 +646,17 @@ void multires(string path) {
 		int y_multi = codice / x_blocks;
 
 		if(assegnato[codice] == 0) {
-			for(int y1 = 0; y1 < BLOCKSIZE_Y; y1++) 
-				for(int x1 = 0; x1 < BLOCKSIZE_X; x1++) {
+			for(int x1 = 0; x1 < BLOCKSIZE_X; x1++) 
+				for(int y1 = 0; y1 < BLOCKSIZE_Y; y1++) {
 					int idx = (y_multi*BLOCKSIZE_Y+y1) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+x1);
-					point real_coord;
+					point real_coord,coord;
 					int4 pt_info;
 
 					map.host_info[idx].x = 1;
 
 					// ricavo le coordinate reali del punto
-					real_coord.x = map.min.x + (BLOCKSIZE_X * x * map.dx) + x1 * map.dx * (1<<ii);
-					real_coord.y = map.min.y + (BLOCKSIZE_Y * y * map.dy) + y1 * map.dy * (1<<ii);
+					real_coord.x = map.min.x + (BLOCKSIZE_X * map.host_ofs_blocks[codice].x * map.dx) + x1 * map.dx * (1<<ii);
+					real_coord.y = map.min.y + (BLOCKSIZE_Y * map.host_ofs_blocks[codice].y * map.dy) + y1 * map.dy * (1<<ii);
 
 					pt_info.x = x1;
 					pt_info.y = y1;
@@ -639,26 +682,27 @@ void multires(string path) {
 
 		int idx = (y_multi*BLOCKSIZE_Y+foo_info.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+foo_info.x);
 
-		for(int k = 0; k < n; k++) {  
-			if( (pol.points[k].x < foo.x && pol.points[(k+1)%n].x >= foo.x) ||
-			    (pol.points[k].x >= foo.x && pol.points[(k+1)%n].x < foo.x) ) {
+		for(int k = 0; k < n; k++) { 
+			if((pol.points[k].x < foo.x && pol.points[(k + 1) % n].x >= foo.x) ||
+			   (pol.points[k].x >= foo.x && pol.points[(k + 1) % n].x < foo.x) ) {
 				numbc = 1;
-			  	F polyXi = pol.points[k % n].x;
-			  	F polyXj = pol.points[(k + 1) % n].x;
-			  	F polyYi = pol.points[k % n].y;
-			  	F polyYj = pol.points[(k + 1) % n].y;
-			  	if(polyYi + (foo.x - polyXi) / (polyXj - polyXi) * (polyYj - polyYi) < foo.y)
-			    	i_est = 1 - i_est;
-			  	//printf("%f %lf --> %d\n",polyYi+(foo.x-polyXi)/(polyXj-polyXi)*(polyYj-polyYi),foo.y,i_est);
+			  	double polyXi = pol.points[k].x;
+			  	double polyXj = pol.points[(k + 1) % n].x;
+			  	double polyYi = pol.points[k].y;
+			  	double polyYj = pol.points[(k + 1) % n].y;
+			  	double pp = foo.x - polyXi;
+
+		  		if(polyYi + (foo.x - polyXi) / (polyXj - polyXi) * (polyYj - polyYi) < foo.y)
+		    		i_est = 1 - i_est;			   
 			}
 		}
 
-		if (i_est == 0 || numbc == 0) { // !condizione per celle con xp < min(xpoint) o xp > max(xpoint)
-			map.host_info[idx].x = BIT_EXTERN;
+		if (i_est == 0 || numbc == 0) { // !condizione per celle con foo.x < min(xpoint) o foo.x > max(xpoint)
+			map.host_info[idx].x = OUT;
 			queue.push_back(foo_info);
 		}
 		else {
-			map.host_info[idx].x = 0; 
+			map.host_info[idx].x = IN; 
 			queue0.push_back(foo_info);
 		}
     }
@@ -675,34 +719,42 @@ void multires(string path) {
 		int y_multi = foo.z / x_blocks;
 		int idx = (y_multi*BLOCKSIZE_Y+foo.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+foo.x);
 
-		if(map.host_info[idx].x == 1) {
+		if(map.host_info[idx].x == OUT) {
 		    map.host_info[idx].x = BIT_EXTERN;
-		    // manca controllo?
-		    // aggiungo vicini alla coda
-		    int dx = 0;
-		  	int dy = 0;
-		  	int sh = 0;																																																																																																																																																																																														
-		  	int ox = 0;
-		  	int oy = 0;
 
+		    // aggiungo vicini alla coda
 		  	// quale rappresenta la posizione del vicino: 0 -> N, 1 -> S, 2 -> W, 3 -> E
 		  	for(int quale = 0; quale < 4; quale++) {
-			  	switch(quale){
+		  		int dx = 0;
+			  	int dy = 0;
+			  	int sh = 0;																																																																																																																																																																																														
+			  	int ox = 0;
+			  	int oy = 0;
+
+			  	switch(quale) {
 			  		case 0: {dy = 1; sh = 6; ox = foo.x; oy = 0;} break;
 			  		case 1: {dy = -1; sh = 1; ox = foo.x; oy = BLOCKSIZE_Y - 1;} break;
 			  		case 2: {dx = -1; sh = 3; ox = BLOCKSIZE_X - 1; oy = foo.y;} break;
 			  		case 3: {dx = 1; sh = 4; ox = 0; oy = foo.y;} break;
 			  	}
 
-			  	if ((quale == 0 && foo.y < BLOCKSIZE_Y - 1) ||
-		      		(quale == 1 && foo.y > 0) ||
-		      		(quale == 2 && foo.x > 0) ||
-		      		(quale == 3 && foo.x < BLOCKSIZE_X - 1)) { // sono dentro quadrato corrente -> prelevo valore
+			  	if((quale == 0 && foo.y < BLOCKSIZE_Y - 1) ||
+		      	   (quale == 1 && foo.y > 0) ||
+		      	   (quale == 2 && foo.x > 0) ||
+		      	   (quale == 3 && foo.x < BLOCKSIZE_X - 1)) { // sono dentro quadrato corrente -> prelevo valore
 			  			int4 pt;
 			  			pt.x = foo.x + dx;
 			  			pt.y = foo.y + dy;
 			  			pt.z = foo.z;
-			  			queue.push_back(pt);	    	
+
+			  			int xm = pt.z % x_blocks;
+			      		int ym = pt.z / x_blocks;
+			      		int id = (ym*BLOCKSIZE_Y+pt.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*xm+pt.x);
+
+			      		if(map.host_info[id].x == ZERO) {
+			      			map.host_info[id].x = OUT;
+			      			queue.push_back(pt);
+			      		}	    	
 		  		}else {
 				    neigh_t neigh = map.neigh[8 * foo.z + sh];
 				    char lev = neigh.lev;
@@ -710,13 +762,20 @@ void multires(string path) {
 				    if(neigh.n1 != -1)
 					    switch(lev) {
 					    	int4 pt1;
-					    	int base,ox1,oy1;
-
+					    	int base,ox1,oy1,xm1,ym1,id1,xm2,ym2,id2;
 					    	case 0: // blocco vicino è alla stessa risoluzione del blocco corrente      
 					      		pt1.x = ox;
 					      		pt1.y = oy;
 					      		pt1.z = neigh.n1;
-					      		queue.push_back(pt1);
+
+					      		xm1 = pt1.z % x_blocks;
+					      		ym1 = pt1.z / x_blocks;
+					      		id1 = (ym1*BLOCKSIZE_Y+pt1.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*xm1+pt1.x);
+					      		
+					      		if(map.host_info[id1].x == ZERO) {
+			      					map.host_info[id1].x = OUT;
+			      					queue.push_back(pt1);
+					      		}
 
 					      		break;
 
@@ -739,12 +798,26 @@ void multires(string path) {
 					      		pt1.x = ox1;
 					      		pt1.y = oy1;
 					      		pt1.z = neigh.n1;
+					      		xm1 = pt1.z % x_blocks;
+					      		ym1 = pt1.z / x_blocks;
+					      		id1 = (ym1*BLOCKSIZE_Y+pt1.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*xm1+pt1.x);
+
 					      		pt2.x = ox1 + (quale <= 1);
 					      		pt2.y = oy1 + (quale > 1);
 					      		pt2.z = neigh.n2;
+					      		xm2 = pt2.z % x_blocks;
+					      		ym2 = pt2.z / x_blocks;
+					      		id2 = (ym2*BLOCKSIZE_Y+pt2.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*xm2+pt2.x);
 
-					      		queue.push_back(pt1);
-					      		queue.push_back(pt2);
+					      		if(map.host_info[id1].x == ZERO) {
+					      			map.host_info[id1].x = OUT;
+					      			queue.push_back(pt1);
+					      		}
+
+					      		if(map.host_info[id2].x == ZERO) {
+					      			map.host_info[id2].x = OUT;
+					      			queue.push_back(pt2);
+					      		}
 
 					      		break;
 
@@ -765,7 +838,14 @@ void multires(string path) {
 					      		pt1.y = oy1;
 					      		pt1.z = neigh.n1;
 
-					      		queue.push_back(pt1);
+					      		xm1 = pt1.z % x_blocks;
+					      		ym1 = pt1.z / x_blocks;
+					      		id1 = (ym1*BLOCKSIZE_Y+pt1.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*xm1+pt1.x);
+					      		
+					      		if(map.host_info[id1].x == ZERO ) {
+			      					map.host_info[id1].x = OUT;
+			      					queue.push_back(pt1);
+					      		}
 
 					      		break;					      		
 					    }
@@ -774,7 +854,7 @@ void multires(string path) {
 		}
   	}
 
-  	// analogo per i punti interni al poligono 
+	// analogo per i punti interni al poligono 
   	while(queue0.size() > 0) {
 	    int4 foo = queue0[queue0.size() - 1];
 	    queue0.erase(queue0.end() - 1);
@@ -782,9 +862,9 @@ void multires(string path) {
 	    int x_multi = foo.z % x_blocks;
 		int y_multi = foo.z / x_blocks;
 		int idx = (y_multi*BLOCKSIZE_Y+foo.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+foo.x);
-
-		if(map.host_info[idx].x == 1) {
-		    map.host_info[idx].x = 0;
+		
+		if(map.host_info[idx].x == IN) {
+		   	map.host_info[idx].x = 0;
 
 		    int dx = 0;
 		  	int dy = 0;
@@ -805,10 +885,18 @@ void multires(string path) {
 		      		(quale == 2 && foo.x > 0) ||
 		      		(quale == 3 && foo.x < BLOCKSIZE_X - 1)) { 
 			  			int4 pt;
-			  			pt.x = dx;
-			  			pt.y = dy;
+			  			pt.x = foo.x + dx;
+			  			pt.y = foo.y + dy;
 			  			pt.z = foo.z;
-			  			queue0.push_back(pt);	    	
+
+			  			int xm = pt.z % x_blocks;
+			      		int ym = pt.z / x_blocks;
+			      		int id = (ym*BLOCKSIZE_Y+pt.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*xm+pt.x);
+			      		//printf("%d\n",map.host_info[id].x);
+			      		if(map.host_info[id].x == ZERO) {
+			      			map.host_info[id].x = IN;
+			      			queue0.push_back(pt);
+			      		}	    		    	
 		  		}else {
 				    neigh_t neigh = map.neigh[8 * foo.z + sh];
 				    char lev = neigh.lev;
@@ -816,13 +904,21 @@ void multires(string path) {
 				    if(neigh.n1 != -1)
 					    switch(lev) {
 					    	int4 pt1;
-					    	int base,ox1,oy1;
+					    	int base,ox1,oy1,xm1,ym1,id1,xm2,ym2,id2;
 
 					    	case 0:      
 					      		pt1.x = ox;
 					      		pt1.y = oy;
 					      		pt1.z = neigh.n1;
-					      		queue0.push_back(pt1);
+					      		
+					      		xm1 = pt1.z % x_blocks;
+					      		ym1 = pt1.z / x_blocks;
+					      		id1 = (ym1*BLOCKSIZE_Y+pt1.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*xm1+pt1.x);
+					      		
+					      		if(map.host_info[id1].x == ZERO) {
+			      					map.host_info[id1].x = IN;
+			      					queue0.push_back(pt1);
+					      		}
 
 					      		break;
 
@@ -844,14 +940,26 @@ void multires(string path) {
 					      		pt1.x = ox1;
 					      		pt1.y = oy1;
 					      		pt1.z = neigh.n1;
+					      		xm1 = pt1.z % x_blocks;
+					      		ym1 = pt1.z / x_blocks;
+					      		id1 = (ym1*BLOCKSIZE_Y+pt1.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*xm1+pt1.x);
+
 					      		pt2.x = ox1 + (quale <= 1);
 					      		pt2.y = oy1 + (quale > 1);
 					      		pt2.z = neigh.n2;
+					      		xm2 = pt2.z % x_blocks;
+					      		ym2 = pt2.z / x_blocks;
+					      		id2 = (ym2*BLOCKSIZE_Y+pt2.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*xm2+pt2.x);
 
-					      		queue0.push_back(pt1);
+					      		if(map.host_info[id1].x == ZERO) {
+					      			map.host_info[id1].x = IN;
+					      			queue0.push_back(pt1);
+					      		}
 
-					      		if(neigh.n2 != -1)
-					      			queue.push_back(pt2);
+					      		if(map.host_info[id2].x == ZERO){
+					      			map.host_info[id2].x = IN;
+					      			queue0.push_back(pt2);
+					      		}
 
 					      		break;
 
@@ -872,7 +980,14 @@ void multires(string path) {
 					      		pt1.y = oy1;
 					      		pt1.z = neigh.n1;
 
-					      		queue0.push_back(pt1);
+					      		xm1 = pt1.z % x_blocks;
+					      		ym1 = pt1.z / x_blocks;
+					      		id1 = (ym1*BLOCKSIZE_Y+pt1.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*xm1+pt1.x);
+					      		
+					      		if(map.host_info[id1].x == ZERO) {
+			      					map.host_info[id1].x = IN;
+			      					queue0.push_back(pt1);
+					      		}
 
 					      		break;					      		
 					    }
@@ -883,44 +998,52 @@ void multires(string path) {
 
   	for(int i = 0; i < tot_blocks; i++)
   		for(int x = 0; x < BLOCKSIZE_X; x++)
-  			for(int y = 0; y < BLOCKSIZE_Y; y++) {        
-			int num_bou = 0; //contatore del numero di cc per ciascuna cella
-			int x_multi = i % x_blocks;
-			int y_multi = i / x_blocks;
-			int idx = (y_multi * BLOCKSIZE_Y + y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X * x_multi + x);
+  			for(int y = 0; y < BLOCKSIZE_Y; y++) {
+				int num_bou = 0; //contatore del numero di cc per ciascuna cella
+				int x_multi = i % x_blocks;
+				int y_multi = i / x_blocks;
+				int idx = (y_multi * BLOCKSIZE_Y + y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X * x_multi + x);
 
-			if (map.host_info[idx].x == 0) {// non e' esterna
-				for(int quale = 0; quale < 4; quale++){ 
-					int secondo,n1,n2;
+				if (map.host_info[idx].x == 0) {// non e' esterna
+					for(int quale = 0; quale < 4; quale++){ 
+						int secondo = 0;
+						int n1 = -1;
+						int n2 = -1;
+						
+						get_neigh(i,x,y,map.neigh,quale,n1,n2,secondo,x_blocks);
 
-					get_neigh(i,x,y,map.neigh,map.host_info,quale,n1,n2,secondo);
-					if(secondo)
-						if(map.host_info[n1].x == BIT_EXTERN || map.host_info[n2] == BIT_EXTERN)
-							num_bou += 1;	
-		  			else 
-		  				if(map.host_info[n1].x == BIT_EXTERN) 
-		  					num_bou = num_bou+1;
-	  			}          
-			  	
-			  	if (num_bou > 0 && num_bou <= 2) //cella di contorno (1 o 2 vicini)
-			    	map.host_info[i + ncol * j].x = 2; // valore temporaneo per poi assegnare il valore corretto
+						if(secondo == 1) {
+							if(n1 != -1 && n2 != -1)
+								if(map.host_info[n1].x == BIT_EXTERN || map.host_info[n2].x == BIT_EXTERN)
+									num_bou++;
+						}
+			  			else
+			  				if(n1 != -1)
+				  				if(map.host_info[n1].x == BIT_EXTERN)
+				  					num_bou++;
+				  				
+		  			}          
+				  	
+				  	if (num_bou > 0 && num_bou <= 2) //cella di contorno (1 o 2 vicini)
+				    	map.host_info[idx].x = 2; // valore temporaneo per poi assegnare il valore corretto
 			}
   		}
 
   	int ncell_bc=0; //numero di celle con condizioni al contorno
+  	vector<bc> bc_list;
 
   	// assumo che i vincoli speciali siano solo sul primo poligono 
-  	// if (!nocond)
 	for(int i = 0; i < tot_blocks; i++)
   		for(int x = 0; x < BLOCKSIZE_X; x++)
-  			for(int y = 0; y < BLOCKSIZE_Y; y++) { 
+  			for(int y = 0; y < BLOCKSIZE_Y; y++) {
+  				//trovo l'indice in map host_info
   				int x_multi = i % x_blocks;
   				int y_multi = i / x_blocks;
   				int idx = (y_multi * BLOCKSIZE_Y + y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X * x_multi + x);
 
-		      	if (map.host_info[idx].x == 2) { // cella bordo
-			      	int if_bc=0; 
+		      	if(map.host_info[idx].x == 2) { // cella bordo
 				    bc cell;
+				    int if_bc = 0; 
 
 				    map.host_info[idx].x = 0; // resetto, ora contano i bit settati (che saltano 1, riservato per cella fuori)
 
@@ -930,229 +1053,174 @@ void multires(string path) {
 			      	cell.ifl_bc_s = 0; cell.numbc_s = 0;
 
 			      	for(int quale = 0; quale < 4; quale++) {
-			      		int secondo,n1,n2;
+			      		int secondo = 0;
+			      		int n1 = -1;
+			      		int n2 = -1;
 
-			      		get_neigh(i,x,y,map.neigh,map.host_info,quale,n1,n2,secondo);
+			      		get_neigh(i,x,y,map.neigh,quale,n1,n2,secondo,x_blocks);
 
-				      	if (map.host_info[n1].x == BIT_EXTERN) {
-				      	  	if_bc = if_bc + 1; 
-				      	  	//posizione dell'intercella
+			      		if(secondo){
+			      			if(map.host_info[n1].x == BIT_EXTERN || map.host_info[n2].x == BIT_EXTERN) {
+					      	  	if_bc++; 
 
-				      	  	// TODO: calcola coordinate reali con host_level_multi e host_ofs_block
+					      	  	switch(quale) {
+					      	  		case 0:
+					      	  			cell.ifl_bc_n = 1;
+					      	  			cell.numbc_n = 0;
 
-				      	  	if (map.host_info[n1].x == BIT_EXTERN) {
-				      	    	cell.ifl_bc_w = 1;
-				      	    	cell.numbc_w = 0;
-				      	  	}
-				      	  	else {
-				      	    	cell.ifl_bc_w = polygons[0].edges[kk]; //tipo di condizine al contorno per la cella i,j sul lato west (1 muro, 2 inflow, 3 outflow, 4 far field)
-					      	    // se condizione 1 -> non c'e' segmento con dati, se >1 cerco il codice del segmento bcc
-					      	    int found=-1;
-					      	    if (polygons[0].edges[kk]>1) {
-				      	      	for (int j=0;j<ncons;j++)
-				      		    	if (conss[j].edge==kk)
-				      		    		found=j;
-				      	      	if (found==-1 && polygons[0].edges[kk]!=1 &&polygons[0].edges[kk]!=4)
-				      		      	printf("ERROR: reference segment not found\n");
-				      	    	}
-					          	else 
-					            	found=0;
-					          	cell.numbc_w=found; //condizione variabile nel tempo
-					        }
-					        //Z[(i-1) + ncol * j]=Z[i + ncol * j]; //devo aggiornare la quota per non avere tappi nelle celle fantasma
-				      	}
+					      	  			break;
+					      	  		case 1:
+					      	  			cell.ifl_bc_s = 1;
+					      	  			cell.numbc_s = 0;
+
+					      	  			break;
+					      	  		case 2:
+					      	  			cell.ifl_bc_w = 1;
+					      	  			cell.numbc_w = 0;
+
+					      	  			break;
+					      	  		case 3:
+					      	  			cell.ifl_bc_e = 1;
+					      	  			cell.numbc_e = 0;
+
+					      	  			break;
+					      	  	}
+					      	}
+					    }
+					    else
+					      	if(map.host_info[n1].x == BIT_EXTERN) {
+					      	  	if_bc++; 
+
+					      	    switch(quale) {
+					      	  		case 0:
+					      	  			cell.ifl_bc_n = 1;
+					      	  			cell.numbc_n = 0;
+
+					      	  			break;
+					      	  		case 1:
+					      	  			cell.ifl_bc_s = 1;
+					      	  			cell.numbc_s = 0;
+
+					      	  			break;
+					      	  		case 2:
+					      	  			cell.ifl_bc_w = 1;
+					      	  			cell.numbc_w = 0;
+
+					      	  			break;
+					      	  		case 3:
+					      	  			cell.ifl_bc_e = 1;
+					      	  			cell.numbc_e = 0;
+
+					      	  			break;
+					      	  	}
+					      	}
+
+					    if(if_bc != 0) {
+			    	  		// cerca se gia' presente
+				    	  	int found = -1;
+
+				    	  	for(int i1 = 0; i1 < (int)bc_list.size(); i1++) {
+				    	    	bc cellc = bc_list[i1];
+
+				    	    	if (cell.ifl_bc_w == cellc.ifl_bc_w &&
+				    		      	cell.ifl_bc_e == cellc.ifl_bc_e &&
+				          			cell.ifl_bc_s == cellc.ifl_bc_s &&
+					          		cell.ifl_bc_n == cellc.ifl_bc_n &&
+					          		cell.numbc_n == cellc.numbc_n &&
+					          		cell.numbc_s == cellc.numbc_s &&
+					          		cell.numbc_e == cellc.numbc_e &&
+					          		cell.numbc_w == cellc.numbc_w)
+					    	        found = i1;
+				    	  	}
+
+				    	  	if (found  == -1) {
+					    	    bc_list.push_back(cell);
+					    	    ncell_bc = ncell_bc+1;
+					    	    found = (int)bc_list.size()-1;
+				    	  	}
+
+					    	// parse and store .y .z .w
+					    	// in .x store flags 4 bordi
+					    	// in .y ci sono 4 bit per ciascun <= 2 bordo
+					    	map.host_info[idx].x = 0;
+					    	if (bc_list[found].ifl_bc_w != 0) {
+				    	    	map.host_info[idx].x |= BIT_W;
+				    	  	}
+				    	  	if (bc_list[found].ifl_bc_e != 0){
+				    	    	map.host_info[idx].x |= BIT_E;
+				    	  	}
+				    	  	if (bc_list[found].ifl_bc_s != 0){
+				    	    	map.host_info[idx].x |= BIT_S;
+				    	  	}
+				    	  	if (bc_list[found].ifl_bc_n != 0){
+				    	    	map.host_info[idx].x |= BIT_N;
+				    	  	}
+				    	  
+				    	  	if (1==0)
+				    	  		printf("%d, %d %d, %d %d, %d %d, %d %d\n",map.host_info[idx].x,
+				    		 		bc_list[found].ifl_bc_n,bc_list[found].numbc_n,
+				    		 		bc_list[found].ifl_bc_s,bc_list[found].numbc_s,
+				    		 		bc_list[found].ifl_bc_e,bc_list[found].numbc_e,
+				    		 		bc_list[found].ifl_bc_w,bc_list[found].numbc_w);
+
+				    	  	switch(map.host_info[idx].x) {
+				      	  		case BIT_N: // solo nord
+				      	    		map.host_info[idx].y = bc_list[found].ifl_bc_n;
+					      	    	map.host_info[idx].z = bc_list[found].numbc_n;
+					      	    	break;
+					      	  	case BIT_S: // solo sud
+						      	    map.host_info[idx].y = bc_list[found].ifl_bc_s;
+						      	    map.host_info[idx].z = bc_list[found].numbc_s;
+						      	    break;
+					      	  	case BIT_W: // solo w
+						      	    map.host_info[idx].y = bc_list[found].ifl_bc_w;
+						      	    map.host_info[idx].z = bc_list[found].numbc_w;
+						      	    break;
+					      	  	case BIT_E: // solo e
+						      	    map.host_info[idx].y = bc_list[found].ifl_bc_e;
+						      	    map.host_info[idx].z = bc_list[found].numbc_e;
+						      	    break;
+						      	case BIT_N + BIT_S: //due bordi
+						      	    map.host_info[idx].x = BIT_N + 16 * BIT_S;
+						      	    map.host_info[idx].y = bc_list[found].ifl_bc_n + 16 * bc_list[found].ifl_bc_s;
+						      	    map.host_info[idx].z = bc_list[found].numbc_n;
+						      	    map.host_info[idx].w = bc_list[found].numbc_s;
+						      	    break;
+					      	  	case BIT_N + BIT_E: //due bordi
+						      	    map.host_info[idx].x = BIT_N + 16 * BIT_E;
+						      	    map.host_info[idx].y = bc_list[found].ifl_bc_n + 16 * bc_list[found].ifl_bc_e;
+						      	    map.host_info[idx].z = bc_list[found].numbc_n;
+						      	    map.host_info[idx].w = bc_list[found].numbc_e;
+						      	    break;
+					      	  	case BIT_N + BIT_W: //due bordi
+						      	    map.host_info[idx].x = BIT_N + 16 * BIT_W;
+						      	    map.host_info[idx].y = bc_list[found].ifl_bc_n + 16 * bc_list[found].ifl_bc_w;
+						      	    map.host_info[idx].z = bc_list[found].numbc_n;
+						      	    map.host_info[idx].w = bc_list[found].numbc_w;
+						      	    break;
+					      	  	case BIT_S + BIT_W: //due bordi
+						      	    map.host_info[idx].x = BIT_S + 16 * BIT_W;
+						      	    map.host_info[idx].y = bc_list[found].ifl_bc_s + 16 * bc_list[found].ifl_bc_w;
+						      	    map.host_info[idx].z = bc_list[found].numbc_s;
+						      	    map.host_info[idx].w = bc_list[found].numbc_w;
+						      	    break;
+					      	  	case BIT_S + BIT_E: //due bordi
+						      	    map.host_info[idx].x = BIT_S + 16 * BIT_E;
+						      	    map.host_info[idx].y = bc_list[found].ifl_bc_s + 16 * bc_list[found].ifl_bc_e;
+						      	    map.host_info[idx].z = bc_list[found].numbc_s;
+						      	    map.host_info[idx].w = bc_list[found].numbc_e;
+						      	    break;
+					      	  	case BIT_W + BIT_E: //due bordi
+						      	    map.host_info[idx].x = BIT_W + 16 * BIT_E;
+						      	    map.host_info[idx].y = bc_list[found].ifl_bc_w + 16 * bc_list[found].ifl_bc_e;
+						      	    map.host_info[idx].z = bc_list[found].numbc_w;
+						      	    map.host_info[idx].w = bc_list[found].numbc_e;
+						      	    break;  
+				    		}
+		   				}
 				    }               
-			      	if ((i+1)<ncol && map.host_info[(i+1) + ncol * j].x==BIT_EXTERN) {
-			      	  	if_bc=if_bc+1;
-			      	  	//posizione dell'intercella
-				      	xp=mx+(i+0.5)*dx;
-		      	  		yp=my+(j)*dy;
-			      	  	int kk=assign_bc(mx+(i+0.5)*dx, my+(j)*dy); //!kk è il numero della condizione al contorno per la cella i,j
-			      	  	// printf("east %d %d: %d\n",i,j,kk);
-			      	  	if (kk<0 || map.host_info[j * ncol +(i+1)].x==BIT_TAPPO){
-			      	    	cell.ifl_bc_e=1;
-			      	    	cell.numbc_e=0;
-		      	  		}
-		      	  		else {
-		      	    		cell.ifl_bc_e=polygons[0].edges[kk]; //tipo di condizine al contorno per la cella i,j sul lato west (1 muro, 2 inflow, 3 outflow, 4 far field)
-				      	    //printf("east --> %d\n",polygons[0].edges[kk]);
-				      	    // se condizione 1 -> non c'e' segmento con dati, se >1 cerco il codice del segmento bcc
-				      	    int found=-1;
-				      	    if (polygons[0].edges[kk]>1){
-				      	      for (int j=0;j<ncons;j++)
-				      		      if (conss[j].edge==kk)
-				      		        found=j;
-				      	      if (found==-1 && polygons[0].edges[kk]!=1 && polygons[0].edges[kk]!=4)
-				      		      printf("ERROR: reference segment not found\n");
-				      	    }
-				      	    else 
-		      	      			found=0;
-		  	    			cell.numbc_e=found; //condizione variabile nel tempo
-		      	  		}
-			        	//Z[(i+1) + ncol * j]=Z[i + ncol * j]; //devo aggiornare la quota per non avere tappi nelle celle fantasma
-			      	}               
-			      	if ((j+1) < nrow && map.host_info[i + ncol *( j + 1)].x == BIT_EXTERN) {
-			      	  	if_bc = if_bc+1;
-			      	  	//posizione dell'intercella
-			      	  	xp=mx+(i)*dx;
-			      	  	yp=my+(j+0.5)*dy;
-			      	  	int kk=assign_bc(mx+(i)*dx, my+(j+0.5)*dy); //!kk è il numero della condizione al contorno per la cella i,j
-			      	  	if (kk<0 || map.host_info[i + ncol *( j + 1)].x==BIT_TAPPO) {
-			      	    	cell.ifl_bc_n=1;
-			      	    	cell.numbc_n=0;
-			      	  	}
-		    	  		else{
-		    	    		cell.ifl_bc_n=polygons[0].edges[kk]; //tipo di condizine al contorno per la cella i,j sul lato west (1 muro, 2 inflow, 3 outflow, 4 far field)
-				    	    // se condizione 1 -> non c'e' segmento con dati, se >1 cerco il codice del segmento bcc
-				    	    int found=-1;
-				    	    if (polygons[0].edges[kk]>1){
-		    	      			for (int j=0;j<ncons;j++)
-		    		      			if (conss[j].edge==kk)
-		    		        			found=j;
-		    	      			if (found==-1 && polygons[0].edges[kk]!=1 &&polygons[0].edges[kk]!=4)
-		    		      			printf("ERROR: reference segment not found\n");
-		    	    		}
-				    	    else 
-				    	      	found=0;
-		    	    		cell.numbc_n=found; //condizione variabile nel tempo
-		    	  		}  
-		    	  		//Z[i + ncol *(j + 1)]=Z[i + ncol * j]; //devo aggiornare la quota per non avere tappi nelle celle fantasma
-			    	}
-		    		if ((j-1) >= 0 && map.host_info[i + ncol * (j-1)].x == BIT_EXTERN) {
-			    	  	if_bc = if_bc+1;
-			    	  	xp = mx + (i)*dx;
-			    	  	yp = my + (j-0.5)*dy;
-			    	  	int kk=assign_bc(mx+(i)*dx, my+(j-0.5)*dy); //!kk è il numero della condizione al contorno per la cella i,j
-			    	  	if (kk<0 || map.host_info[i + ncol * (j - 1)].x==BIT_TAPPO){
-		    	    		cell.ifl_bc_s=1;	
-				    	    cell.numbc_s=0;
-				    	}
-		    	  		else {
-		    	    		cell.ifl_bc_s=polygons[0].edges[kk]; //tipo di condizine al contorno per la cella i,j sul lato west (1 muro, 2 inflow, 3 outflow, 4 far field)
-		    	    		// se condizione 1 -> non c'e' segmento con dati, se >1 cerco il codice del segmento bcc
-				    	    int found=-1;
-				    	    if (polygons[0].edges[kk]>1) {
-				    	      	for (int j=0;j<ncons;j++)
-				    		    	if (conss[j].edge==kk)
-				    		    		found=j;
-				    	      	if (found==-1 && polygons[0].edges[kk]!=1 &&polygons[0].edges[kk]!=4)
-				    		    	printf("ERROR: reference segment not found\n");
-				    	    }
-				    	    else 
-				    	      	found=0;
-				    	    cell.numbc_s=found; //condizione variabile nel tempo
-				    	}
-				    	//Z[i + ncol *( j - 1)]=Z[i + ncol * j]; //devo aggiornare la quota per non avere tappi nelle celle fantasma
-		    		}
-		    	/*if (if_bc!=0) {
-		    	  	// cerca se gia' presente
-		    	  	int found = -1;
-		    	  	for (int i1 = 0; i1 < (int)bc_list.size(); i1++){
-		    	    	bc cellc=bc_list[i1];
-		    	    	if (cell.ifl_bc_w==cellc.ifl_bc_w &&
-		    		      	cell.ifl_bc_e==cellc.ifl_bc_e &&
-		          			cell.ifl_bc_s==cellc.ifl_bc_s &&
-			          		cell.ifl_bc_n==cellc.ifl_bc_n &&
-			          		cell.numbc_n ==cellc.numbc_n &&
-			          		cell.numbc_s ==cellc.numbc_s &&
-			          		cell.numbc_e ==cellc.numbc_e &&
-			          		cell.numbc_w ==cellc.numbc_w)
-			    	        found=i1;
-		    	  	}
-
-		    	  	if (found==-1) {
-			    	    bc_list.push_back(cell);
-			    	    ncell_bc=ncell_bc+1;
-			    	    found=(int)bc_list.size()-1;
-		    	  	}
-
-		    	  	//	  map.host_info[i * ncol + j].x=found; // riferimento ai dati 
-
-			    	// parse and store .y .z .w
-			    	// in .x store flags 4 bordi
-			    	// in .y ci sono 4 bit per ciascun <= 2 bordo
-
-			    	map.host_info[i + ncol * j].x=0;
-			    	if (bc_list[found].ifl_bc_w!=0) {
-		    	    	map.host_info[i + ncol * j].x|=BIT_W;
-		    	  	}
-		    	  	if (bc_list[found].ifl_bc_e!=0){
-		    	    	map.host_info[i + ncol * j].x|=BIT_E;
-		    	  	}
-		    	  	if (bc_list[found].ifl_bc_s!=0){
-		    	    	map.host_info[i + ncol * j].x|=BIT_S;
-		    	  	}
-		    	  	if (bc_list[found].ifl_bc_n!=0){
-		    	    	map.host_info[i + ncol * j].x|=BIT_N;
-		    	  	}
-		    	  
-		    	  	if (1==0)
-		    	  		printf("%d, %d %d, %d %d, %d %d, %d %d\n",map.host_info[i + ncol * j].x,
-		    		 		bc_list[found].ifl_bc_n,bc_list[found].numbc_n,
-		    		 		bc_list[found].ifl_bc_s,bc_list[found].numbc_s,
-		    		 		bc_list[found].ifl_bc_e,bc_list[found].numbc_e,
-		    		 		bc_list[found].ifl_bc_w,bc_list[found].numbc_w);
-
-		    	  	switch(map.host_info[i + ncol * j].x) {
-		      	  		case BIT_N: // solo nord
-		      	    		map.host_info[i + ncol * j].y=bc_list[found].ifl_bc_n;
-			      	    	map.host_info[i + ncol * j].z=bc_list[found].numbc_n;
-			      	    	break;
-			      	  	case BIT_S: // solo sud
-				      	    map.host_info[i + ncol * j].y=bc_list[found].ifl_bc_s;
-				      	    map.host_info[i + ncol * j].z=bc_list[found].numbc_s;
-				      	    break;
-			      	  	case BIT_W: // solo w
-				      	    map.host_info[i + ncol * j].y=bc_list[found].ifl_bc_w;
-				      	    map.host_info[i + ncol * j].z=bc_list[found].numbc_w;
-				      	    break;
-			      	  	case BIT_E: // solo e
-				      	    map.host_info[i + ncol * j].y=bc_list[found].ifl_bc_e;
-				      	    map.host_info[i + ncol * j].z=bc_list[found].numbc_e;
-				      	    break;
-				      	case BIT_N+BIT_S: //due bordi
-				      	    map.host_info[i + ncol * j].x=BIT_N+16*BIT_S;
-				      	    map.host_info[i + ncol * j].y=bc_list[found].ifl_bc_n+16*bc_list[found].ifl_bc_s;
-				      	    map.host_info[i + ncol * j].z=bc_list[found].numbc_n;
-				      	    map.host_info[i + ncol * j].w=bc_list[found].numbc_s;
-				      	    break;
-			      	  	case BIT_N+BIT_E: //due bordi
-				      	    map.host_info[i + ncol * j].x=BIT_N+16*BIT_E;
-				      	    map.host_info[i + ncol * j].y=bc_list[found].ifl_bc_n+16*bc_list[found].ifl_bc_e;
-				      	    map.host_info[i + ncol * j].z=bc_list[found].numbc_n;
-				      	    map.host_info[i + ncol * j].w=bc_list[found].numbc_e;
-				      	    break;
-			      	  	case BIT_N+BIT_W: //due bordi
-				      	    map.host_info[i + ncol * j].x=BIT_N+16*BIT_W;
-				      	    map.host_info[i + ncol * j].y=bc_list[found].ifl_bc_n+16*bc_list[found].ifl_bc_w;
-				      	    map.host_info[i + ncol * j].z=bc_list[found].numbc_n;
-				      	    map.host_info[i + ncol * j].w=bc_list[found].numbc_w;
-				      	    break;
-			      	  	case BIT_S+BIT_W: //due bordi
-				      	    map.host_info[i + ncol * j].x=BIT_S+16*BIT_W;
-				      	    map.host_info[i + ncol * j].y=bc_list[found].ifl_bc_s+16*bc_list[found].ifl_bc_w;
-				      	    map.host_info[i + ncol * j].z=bc_list[found].numbc_s;
-				      	    map.host_info[i + ncol * j].w=bc_list[found].numbc_w;
-				      	    break;
-			      	  	case BIT_S+BIT_E: //due bordi
-				      	    map.host_info[i + ncol * j].x=BIT_S+16*BIT_E;
-				      	    map.host_info[i + ncol * j].y=bc_list[found].ifl_bc_s+16*bc_list[found].ifl_bc_e;
-				      	    map.host_info[i + ncol * j].z=bc_list[found].numbc_s;
-				      	    map.host_info[i + ncol * j].w=bc_list[found].numbc_e;
-				      	    break;
-			      	  	case BIT_W+BIT_E: //due bordi
-				      	    map.host_info[i + ncol * j].x=BIT_W+16*BIT_E;
-				      	    map.host_info[i + ncol * j].y=bc_list[found].ifl_bc_w+16*bc_list[found].ifl_bc_e;
-				      	    map.host_info[i + ncol * j].z=bc_list[found].numbc_w;
-				      	    map.host_info[i + ncol * j].w=bc_list[found].numbc_e;
-				      	    break;  
-		    		}
-		   		}*/
-		}
-	}
-
-
-	//printf("Multiresolution matrix size: %d\n",x_blocks * y_blocks * BLOCKSIZE_X * BLOCKSIZE_Y);
+				}
+			}
 
 	/*int border_top = map.last_slab % map.slabs_nrows; // per caricare le tavolette giuste
 

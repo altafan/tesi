@@ -13,6 +13,9 @@ using namespace std;
 #define BIT_S 2
 #define BIT_W 4
 #define BIT_E 8
+#define ZERO 55
+#define IN 21
+#define OUT 39
 
 typedef float F;
 
@@ -80,5 +83,12 @@ typedef struct maps_ {
 typedef struct global_ {
 	vector<F4> punti_m;
 } global;
+
+typedef struct bc_ {
+	int ifl_bc_w, numbc_w;
+  	int ifl_bc_e, numbc_e;
+  	int ifl_bc_n, numbc_n;
+  	int ifl_bc_s, numbc_s;
+} bc;
 
 #endif
