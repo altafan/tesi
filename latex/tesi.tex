@@ -1,0 +1,40 @@
+\documentclass[a4paper,12pt,oneside]{report}
+
+\usepackage{pacchetti}																%PACCHETTI USATI
+\usepackage{macro}																		%MACRO IMPLEMENTATE
+%\makeindex																						%CREA INDICE ANALITICO
+
+\begin{document}  
+	\title{Studio di algoritmi per la rappresentazione di dati geografici con multi risoluzione}
+	\author{Pietralberto Mazza}
+	\titolocorso{Informatica}
+	\annoaccademico{2015/2016}		
+	\relatore{Prof. Alessandro Dal Pal\`{u}}
+
+	\maketitle
+	\salvastmpB
+	\input{dedica}
+	\clearpage{\pagestyle{empty}\cleardoublepage}
+	\tableofcontents
+	\salvastmpB	
+	\newpage	
+	\listoffigures		
+	\newpage	
+	%\listoftables	%\lstlistoflistings
+	%===========================
+	\input{introduzione}
+	%===========================
+	\input{cap_1}
+	%===========================
+	\input{cap_2}
+	%===========================
+	\input{cap_3}
+	%\appendix
+	%\input{codifica}
+	
+	\bibliographystyle{alpha}
+	\bibliography{bibliografia}
+	\addcontentsline{toc}{chapter}{Bibliografia}
+
+	%\printindex
+\end{document}

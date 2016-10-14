@@ -1,0 +1,60 @@
+% *                 Definizione variabili                 *
+
+% ?	- \titolocorso			-> Definisce classe titolo del corso di laurea 
+%		- \annoaccademico				-> Definisce l'anno accademico
+%		- \relatore	-> Definisce il nome del professore
+
+\def\titolocorso#1{\gdef\titolocorso{#1}}			
+\def\annoaccademico#1{\gdef\annoaccademico{#1}}				
+\def\relatore#1{\gdef\relatore{#1}}		
+
+% *           Ridefinizione \maketitle per unimi          *
+
+\renewcommand{\maketitle}
+{
+  \begin{titlepage}
+    \thispagestyle{empty}
+    \addtolength{\footskip}{-4cm}
+    \addtolength{\textheight}{6cm}
+    \addtolength{\topmargin}{-1cm}
+    \addtolength{\hoffset}{0,75cm}
+    \addtolength{\textwidth}{2cm}
+    \let\footnotesize\small
+    \let\footnoterule\relax
+
+    \begin{center}
+      \MIN
+    \end{center}
+
+    \begin{center}
+      \ATENEO\\ 
+      \MIL\\ 
+      \bigskip\bigskip
+      \DIP\\																								%LINEA ORIZZONTALE def. in macro.sty
+    	{\small Corso di Laurea in:} \textsc{\titolocorso}				%TITOLO DEL CORSO
+    \end{center}
+
+    \begin{center}
+    	\vspace{2cm}
+      {\Huge  \@title \\ \par}																	%TITOLO DEL DOCUMENTO
+    \end{center}
+    \par
+    \bigskip\bigskip\bigskip\bigskip
+
+    \begin{center}
+      \begin{tabular}{l l r}
+        {Studente:} & {\qquad\qquad\qquad\qquad} & {Relatore:}\\
+        {Pietralberto Mazza} & {\qquad\qquad\qquad\qquad} & {Alessandro Dal Pal\`{u}}
+      \end{tabular}
+    \end{center}
+
+    \bigskip\bigskip
+    \begin{center}
+      \LINE\\
+      {Anno Accademico \annoaccademico}
+    \end{center}
+  
+  \end{titlepage}
+  \setcounter{footnote}{0}%
+  \let\thanks\relax\let\maketitle\relax
+}

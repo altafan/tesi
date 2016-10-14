@@ -1,0 +1,22 @@
+\select@language {italian}
+\select@language {italian}
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces Header di un file .grd\relax }}{8}{figure.caption.4}
+\contentsline {figure}{\numberline {1.2}{\ignorespaces Ordinamento delle tavolette nella matrice\relax }}{8}{figure.caption.4}
+\contentsline {figure}{\numberline {1.3}{\ignorespaces Array di tavolette\relax }}{8}{figure.caption.5}
+\contentsline {figure}{\numberline {1.4}{\ignorespaces Poligono in una mappa altimetrica\relax }}{9}{figure.caption.6}
+\contentsline {figure}{\numberline {1.5}{\ignorespaces Relazione fra i blocchi di diverso livello\relax }}{10}{figure.caption.7}
+\contentsline {figure}{\numberline {1.6}{\ignorespaces Esempio di matrice a multi risoluzione (a sinistra) e di matrice dei blocchi (a destra)\relax }}{11}{figure.caption.8}
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Il rettangolo che inscrive il poligono\relax }}{15}{figure.caption.9}
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Vettore di tavolette\relax }}{16}{figure.caption.10}
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Mappa geografica suddivisa in tavolette\relax }}{17}{figure.caption.11}
+\contentsline {figure}{\numberline {3.4}{\ignorespaces Esempio di bitmask dei diversi livelli\relax }}{23}{figure.caption.14}
+\contentsline {figure}{\numberline {3.5}{\ignorespaces Esempio di completamento quadrato in bitmask (livello 0)\relax }}{24}{figure.caption.15}
+\contentsline {figure}{\numberline {3.6}{\ignorespaces Esempio di bitmask completa del livello 2 di risoluzione\relax }}{25}{figure.caption.17}
+\contentsline {figure}{\numberline {3.7}{\ignorespaces Esempio di bitmask e bitmaskC con i = 3\relax }}{26}{figure.caption.19}
+\contentsline {figure}{\numberline {3.8}{\ignorespaces Esempio di map.host\_info\relax }}{27}{figure.caption.23}
+\contentsline {figure}{\numberline {3.9}{\ignorespaces Esempio di bounding blocks\relax }}{28}{figure.caption.24}
+\contentsline {figure}{\numberline {3.10}{\ignorespaces I punti dei \texttt {bounding\_blocks} compongono il doppio perimetro del poligono\relax }}{30}{figure.caption.25}
+\contentsline {figure}{\numberline {3.11}{\ignorespaces Espansione della ricerca\relax }}{31}{figure.caption.27}

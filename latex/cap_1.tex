@@ -1,0 +1,98 @@
+\chapter{Nozioni preliminari}
+
+\section{Immagini}
+
+	Un'immagine in computer grafica viene rappresentata come una matrice rettangolare di punti chiamati pixels. 
+	In questo progetto, utilizzando mappe geografiche altimetriche, ogni punto della matrice rappresenta, invece, l'altezza del terreno di una area specifica, quindi oltre all'altezza vengono memorizzati anche la larghezza del singolo pixel (1m ad esempio) e la georeferenziazione, ovvero si specifica la posizione geografica di un punto della matrice, in modo da poter posizionare la matrice correttamente nello spazio. 
+
+	\subsection{GIS}
+		Le mappe geografiche utilizzate in questo progetto vengono prese da un particolare database geografico chiamato GIS. Un Geographic Information System \`{e} un sistema progettato per ricevere, immagazzinare, elaborare, analizzare, gestire e rappresentare dati di tipo geografico. \\ 
+		Le immagini utilizzate in questo lavoro di tesi sono una rielaborazione compiuta dal dipartimento di Ingegneria Idraulica sulla base delle immagini GIS.
+	\subsection{Tavolette}
+		Per semplificare la gestione di queste grandi immagini, va tuttavia precisato che una generica mappa \`{e} in realt\`{a} composta da pi\`{u} sottomatrici chiamate tavolette e, quindi, puo essere vista come una matrice \textit{N} x \textit{M} di tavolette, che a loro volta sono matrici \textit{n} x \textit{m} di punti.
+	    Nel lavoro di tesi si assume che ogni immagine sia composta da una griglia ordinata di file numerati da 1 a $N*M$ con estensione .grd.\\
+		Un file .grd contiene un'intestazione in cui sono indicati: 
+		\begin{itemize}
+			\item il numero di righe e di colonne della tavoletta (\textit{n,m})
+			\item il punto con coordinate minime e il punto con coordinate massime (il vertice in basso a sinistra e il vertice in alto a destra della tavoletta) 
+			\item la coppia di altezze del terreno con valori minimo e massimo
+		\end{itemize}
+
+		\begin{figure}[htbp]
+			\centering
+			\begin{minipage}[c]{.40\textwidth}
+				\centering\setlength{\captionmargin}{0pt}
+				\includegraphics[width=4cm]{img/header.png}
+				\caption{Header di un file .grd}
+			\end{minipage}
+			\hspace{1cm}
+			\begin{minipage}[c]{.40\textwidth}
+				\centering\setlength{\captionmargin}{0pt}
+				\includegraphics[width=4cm]{img/tavolette.png}
+				\caption{Ordinamento delle tavolette nella matrice}
+			\end{minipage}
+		\end{figure}
+		Quello che segue dopo l'header sono le altezze del terreno per ogni punto della tavoletta.\\ 	
+		Ogni file viene dunque letto e salvato in un array di tavolette in cui sono memorizzate solo le informazioni necessarie presenti nell'header:
+		\begin{itemize}
+			\item la dimensione di ogni tavoletta (numero di righe e di colonne)
+			\item le coordinate dei punti min e max
+		\end{itemize}
+		\begin{figure}[htbp]
+			\centering
+			\includegraphics[width=8cm]{./img/vettore_tavolette.png}
+			\caption{Array di tavolette}
+		\end{figure}
+
+	\subsection{Poligono}
+		In genere vengono utilizzate immagini di mappe geografiche e data la loro grandezza, sulla mappa viene delineata un'area di interesse, ovvero un poligono che delimita la zona entro la quale compiere una simulazione di un flusso d'acqua. 
+		Questo poligono viene salvato in un file con estensione .BLN, all'interno del quale vengono scritte le coordinate geografiche x,y dei vertici, seguendo il senso orario, oltrech\'{e} il tipo di condizione di bordo:
+		\begin{itemize}
+			\item 0 - Nessuna condizione
+			\item 1 - Muro
+			\item 2 - Acqua in entrata
+			\item 3 - Acqua in uscita
+			\item 4 - Terreno lontano
+		\end{itemize}
+		Le informazioni del poligono vengono salvate in una struttura dati composta (\texttt{struct}) contenente 2 array, rispettivamente quello delle coordinate dei vertici e quello delle condizioni di bordo.
+		\begin{figure}[htbp]
+			\centering
+			\includegraphics[width=10cm]{img/poligono.png}
+			\caption{Poligono in una mappa altimetrica}
+		\end{figure}
+
+\section{Multi risoluzione}
+	
+	Quando un'immagine viene discretizzata con una griglia cartesiana, i dati sono memorizzati con un array bidimensionale. Date, dunque, le coordinate del vertice minimo della griglia, gli indici della matrice utilizzati per scorrere l'array permettono di calcolare le coordinate reali usate nel sistema di riferimento attraverso la formula:
+	\newpage
+	\begin{figure}[b]
+		\centering
+		\includegraphics[height=5cm]{img/blocchi2.png}
+		\caption{Relazione fra i blocchi di diverso livello}
+	\end{figure}
+	\begin{verbatim}
+		real_x = min_x + j * dx;
+		real_y = min_y + i * dy
+	\end{verbatim} 
+	Una matrice a multi risoluzione \`{e} una matrice di 10-50 volte ridotta rispetto alle dimensioni dell'array bidimensionale, ed \`{e} composta da blocchi a differenti livelli di risoluzione.   
+	 
+	\subsection{Blocco}  
+	Ogni blocco contiene \textit{BS} x \textit{BS} celle ma vengono usati diversi livelli di risoluzione: 
+	\begin{itemize}
+		\item livello 1 con cella di dimensione $\Delta_1$
+		\item livello 2 con cella di dimensione $\Delta_2 = 2 * \Delta_1$ \\
+		\textbf{\vdots}
+		\item livello n con cella di dimensione $\Delta_n = 2^{n-1} * \Delta_1$
+	\end{itemize}
+	Ogni cella rappresenta un punto in coordinate geografiche. A livello 1, ovvero a risoluzione massima, ogni cella rappresenta esattamente un punto geografico ($\Delta_1$=distanza fra i puni geografici), mentre a livelli di risoluzione pi\`{u} alti, ovvero a risoluzione minore, le celle rappresentano punti geografici a distanza $\Delta_i$. 
+	In questa tesi \textit{BS} viene assunto uguale a 8 o a 16, ma pu\`{o} avere valore uguale a qualunque potenza di 2, con n = 4 livelli di risoluzione.\\
+	Nella matrice a multi risoluzione il valore di una cella di un blocco a massima risoluzione \`{e} uguale all'altezza del terreno del rispettivo punto in coordinate geografiche, mentre il valore di una a risoluzione minore rappresenta una media delle altezze di $\Delta_i * \Delta_i$ punti geografici.
+	\newpage
+	\subsection{Matrice di blocchi} 
+	Una volta creati, i blocchi vengono codificati e memorizzati in una matrice in cui sono ordinati secondo il numero di blocco.\\ Cos\`{i} facendo viene modificato l'originale rapporto di vicinanza fra i vari blocchi; in seguito verr\`{a} mostrato come, con opportuni calcoli e opportune strutture dati di supporto, \`{e} possibile mantenerlo.
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=12cm]{img/matrice_blocchi.png}
+		\caption{Esempio di matrice a multi risoluzione (a sinistra) e di matrice dei blocchi (a destra)}
+	\end{figure}
+	

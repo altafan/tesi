@@ -1,0 +1,79 @@
+% *********************************************************
+% *                       Macro                           *
+% *********************************************************
+
+% *                    \salvastmpB                        *
+
+% ? Produce un puntino del colore indicato in una pagina
+%   bianca, questo per evitare che il driver di stampa di 
+%   windows non riconosca la pagina bianca inserita 
+%   volontariamente e renda completamente errata la numera-
+%   zione del documento stampato
+
+\def\salvastmpB#1{\gdef\salvastmpB{#1}}
+\salvastmpB{\newpage\thispagestyle{empty}\textcolor{red}{.}}
+% #                   # Frontespizio #                    #
+
+% ? Macro usate nel frontespizio (\MIN, \ATENEO, \DIP, 
+%		\FAC, \LINE)
+
+% *                        \MIN                         *
+
+% ? Produce il logo dell'Università di Milano in conformi-
+%   tà con: http://www.unimi.it/ateneo/12902.htm
+
+%\newcommand\MIN{\includegraphics[width=4cm,height=4cm]{minerva}}
+\newcommand\MIN{\includegraphics[width=7cm,height=6.5cm]{centrato_piccolo_nero.jpg}}
+
+% *                       \ATENEO                       *
+
+% ? Produce la didascalia dell'ateneo:
+%   Università degli Studi di Milano
+%		
+
+\newcommand\ATENEO{\noindent\textsc{\Huge Università degli Studi}}
+\newcommand\MIL{\noindent\textsc{\Huge di Parma}}
+
+% *                         \DIP                        *
+
+% ? Produce la didascalia del dipartimento:
+%		Dipartimento di Tecnologie dell'Informazione
+
+\newcommand\DIP{\textsc{Dipartimento di Matematica e Informatica}}
+
+
+% *                         \MAG                        *
+
+% ? Produce la didascalia della Laurea Magistrale:
+%		Laurea Magistrale in Scienze e Tecnologie dell'In-
+%   formazione
+
+\newcommand\MAG{\textsl{Laurea in Informatica}}
+
+% *                        \LINE                         *
+
+% ? Produce la linea orizzontale nel frontespizio:
+
+\newcommand\LINE{\rule{130mm}{0.01mm}}
+	
+% #                    # Documento #                     #
+
+% *                        \ds                           *
+
+% ? Produce \displaystyle nell'ambiente matematico:
+
+\newcommand\ds{\displaystyle}
+
+% Lettere accentate
+\newcommand{\ea}{\'{e}}
+\newcommand{\Ea}{\'{E}}
+\newcommand{\eg}{\`{e}}
+\newcommand{\Eg}{\`{E}}
+\newcommand{\ag}{\`{a}}
+\newcommand{\Ag}{\`{A}}
+\newcommand{\ig}{\`{\i}}
+\newcommand{\Ig}{\`{I}}
+\newcommand{\og}{\`{o}}
+\newcommand{\Og}{\`{O}}
+\newcommand{\ug}{\`{u}}
+\newcommand{\Ug}{\`{U}}
