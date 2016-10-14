@@ -38,8 +38,8 @@ void read_map(string path) {
 		
 	file.close();
 		
-	map.max.x = floor((map.min.x + (map.ncols - 1) * map.dx) / 10) * 10;
-	map.max.y = floor((map.min.y + (map.nrows - 1) * map.dy) / 10) * 10;
+	map.max.x = map.min.x + (map.ncols);//floor((map.min.x + (map.ncols - 1) * map.dx) / 10) * 10;
+	map.max.y = map.min.y + (map.nrows);//floor((map.min.y + (map.nrows - 1) * map.dy) / 10) * 10;
 	
 	if(dbg) {
 		printf("Bounding box:\nrows cols:%d %d\nmin x,y: %d %d\n",map.nrows,map.ncols,map.min.x,map.min.y);
@@ -75,7 +75,7 @@ void read_pts(string path) {
 
 }
 
-void readBLN(string path) {
+void read_bln(string path) {
 
 	string pathBLN = path+".BLN";
 	int npoints;
@@ -106,7 +106,7 @@ void readBLN(string path) {
 	if(dbg) printf("Polygon read\n\n");
 
 }
-
+/*
 int assign_bc(F xp, F yp) {
 
   	// restituisce -1 se non c'era condizione (es bordo dovuto a btm)
@@ -144,7 +144,7 @@ int assign_bc(F xp, F yp) {
   	return numbc;
 
 }
-
+*/
 void get_neigh(int codice, int x, int y, neigh_t* neighs, int quale, int& other, int& other_, int& secondo, int x_blocks) {
   	
   	//quale: 0 = N, 1 = S, 2 = W, 3 = E
@@ -259,14 +259,12 @@ void multires(string path) {
 	
 	if(dbg) printf("New max x,y: %d %d\n\n", map.max.x,map.max.y);
 
+	// FASE 1: Bitmask e seed points
     // bitmask: valori -1..levels-1, 
     //    -1 = quadrato copre completamente zona esterna
-    // 
     char** bitmask = (char **) malloc(levels * sizeof(char*));
     int** bitmaskC = (int **) malloc(levels * sizeof(int*));
-    uchar4** bitmaskS = (uchar4 **) malloc(levels * sizeof(uchar4*));//sides
-
-    F* Z; // supporto per downsampling
+    //uchar4** bitmaskS = (uchar4 **) malloc(levels * sizeof(uchar4*));//sides
 
     for(int i = 0; i < levels; i++){
 		int size = bsx * bsy / (1<<i) / (1<<i);
@@ -285,19 +283,8 @@ void multires(string path) {
 	  		bitmaskS[i][j].z = 0;	 
 	  		bitmaskS[i][j].w = 0;*/ 
 		} 
-		/*
-		int nx = map.ncols;
-		int ny = map.nrows;
-
-		int scale = (1 << i);
-
-		nx = (nx - 1) / scale + 1;
-		ny = (ny - 1) / scale + 1;
-		
-		if (i == 0) // caso livello 0, metto direttamente dentro
-	  		Z = (F*) malloc(nx * ny * sizeof(F));
-	  	*/
     }
+
     /*
     if(hi) // speciale: se tutto ad alta risoluzione
 	    for(int y = 1; y < sy + 1; y++){  
@@ -313,6 +300,7 @@ void multires(string path) {
     	
 	if(dbg) printf("\nProcessing %ld seed points:\n\n",g.punti_m.size());
 
+	// assegna in bitmask i punti da cui generare i quadrati 
     for(int i = 0; i < levels; i++) {
 		int sizex = bsx / (1<<i);
 		int sizey = bsy / (1<<i);
@@ -321,6 +309,8 @@ void multires(string path) {
 		if(hi == 0) // se non tutto ad alta
 			for(int i1 = 0; i1 < g.punti_m.size(); i1++){
 				if((int) g.punti_m[i1].z - 1 == i) { // lavora al livello corrente
+					//ricavo le coordinate di blocco
+
 					int x = ((g.punti_m[i1].x - map.min.x) / map.dx) / BLOCKSIZE_X; 
 					int y = ((g.punti_m[i1].y - map.min.y) / map.dy) / BLOCKSIZE_Y;
 
@@ -340,10 +330,10 @@ void multires(string path) {
 			}
     }
 	
-	// multi risoluzione a partire dai seed point
+	// FASE 2: Completamento bitmask a partire dai seed points
     for(int i = 0; i < levels; i++) {
 		int sizex = bsx / (1 << i);
-		int sizey = bsy/(1 << i);
+		int sizey = bsy / (1 << i);
 		
 		for(int x = 0; x < sizex; x++)
 	  		for(int y = 0; y < sizey; y++)
@@ -420,7 +410,7 @@ void multires(string path) {
 			}
     }
   
-    // codifica dei blocchi
+    //FASE 3: Codifica dei blocchi
 	int tot_blocks = 0;
 	int bound_blocks = 0;
 	int codes = 0;
@@ -485,14 +475,16 @@ void multires(string path) {
 	map.tot_blocks = tot_blocks;
 	map.bound_blocks = bound_blocks;
 
+	// FASE 4: Preparazione alla creazione della matrice a multi risoluzione 
 	int x_blocks = 1 << (int)(ceil(log((float)map.tot_blocks) / log((float)2) / (float)2)); 
   	int y_blocks = (tot_blocks - 1) / x_blocks + 1;
 
   	if(dbg) {
   		printf("------------------------------------------------------\n\n");
 		printf ("Blocks %d alloc: %d x %d array \n",tot_blocks,x_blocks,y_blocks);
+		printf("Multiresolution matrix size: %d\n",x_blocks * y_blocks * BLOCKSIZE_X * BLOCKSIZE_Y);
 	}
-	printf("Multiresolution matrix size: %d\n",x_blocks * y_blocks * BLOCKSIZE_X * BLOCKSIZE_Y);
+
 	map.host_grid_level_multi = (unsigned char*) malloc(tot_blocks * sizeof(unsigned char));
     map.host_ofs_blocks = (ushort2*) malloc(tot_blocks * sizeof(ushort2));
 	map.host_grid_multi = (F4*) malloc(x_blocks * y_blocks * BLOCKSIZE_X * BLOCKSIZE_Y * sizeof(F4));
@@ -630,6 +622,8 @@ void multires(string path) {
 	   		 	}
     }
 
+
+    // FASE 5: Divisione fra punti interni ed esterni
     // per ogni punto di ogni retta ricavo il blocco a cui appartiene e aggiungo tutto il blocco a pt_list 
     for(int i = 0; i < g.punti_m.size(); i++) {
     	int ii = (int)g.punti_m[i].z - 1;
@@ -645,11 +639,11 @@ void multires(string path) {
 		int x_multi = codice % x_blocks;
 		int y_multi = codice / x_blocks;
 
-		if(assegnato[codice] == 0) {
+		if(assegnato[codice] == 0) { //inserisco ogni blocco una sola volta 
 			for(int x1 = 0; x1 < BLOCKSIZE_X; x1++) 
 				for(int y1 = 0; y1 < BLOCKSIZE_Y; y1++) {
 					int idx = (y_multi*BLOCKSIZE_Y+y1) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+x1);
-					point real_coord,coord;
+					point real_coord;
 					int4 pt_info;
 
 					map.host_info[idx].x = 1;
@@ -662,6 +656,7 @@ void multires(string path) {
 					pt_info.y = y1;
 					pt_info.z = codice;
 
+					//inserisco nel vettore 
 					r_pt_list.push_back(real_coord);
 					pt_list_info.push_back(pt_info);
 				}
@@ -696,12 +691,12 @@ void multires(string path) {
 		    		i_est = 1 - i_est;			   
 			}
 		}
-
+		// esterno
 		if (i_est == 0 || numbc == 0) { // !condizione per celle con foo.x < min(xpoint) o foo.x > max(xpoint)
 			map.host_info[idx].x = OUT;
 			queue.push_back(foo_info);
 		}
-		else {
+		else { // interno
 			map.host_info[idx].x = IN; 
 			queue0.push_back(foo_info);
 		}
@@ -751,7 +746,7 @@ void multires(string path) {
 			      		int ym = pt.z / x_blocks;
 			      		int id = (ym*BLOCKSIZE_Y+pt.y) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*xm+pt.x);
 
-			      		if(map.host_info[id].x == ZERO) {
+			      		if(map.host_info[id].x == ZERO) { // se il vicino non è ancora stato assegnato
 			      			map.host_info[id].x = OUT;
 			      			queue.push_back(pt);
 			      		}	    	
@@ -996,6 +991,7 @@ void multires(string path) {
 		}
   	}
 
+  	// FASE 6: Condizioni di bordo
   	for(int i = 0; i < tot_blocks; i++)
   		for(int x = 0; x < BLOCKSIZE_X; x++)
   			for(int y = 0; y < BLOCKSIZE_Y; y++) {
@@ -1222,10 +1218,11 @@ void multires(string path) {
 				}
 			}
 
-	/*int border_top = map.last_slab % map.slabs_nrows; // per caricare le tavolette giuste
+	//FASE 7: Caricamento delle tavolette
+	int border_top = map.last_slab % map.slabs_nrows; // per caricare le tavolette giuste
 
 	for(int i = map.first_slab; i <= map.last_slab; ++i) {  
-		if(i <= (i - i%map.slabs_nrows + border_top) && (i % map.slabs_nrows) != 0) {
+		if(i <= (i - i % map.slabs_nrows + border_top) && (i % map.slabs_nrows) != 0) {
 			string file = path;
 			file = file + to_string(i) + ".grd";
 
@@ -1307,7 +1304,7 @@ void multires(string path) {
 
 	for(int j = 0; j < x_blocks*y_blocks*BLOCKSIZE_X*BLOCKSIZE_Y; ++j)
 		if(counter[j] != 0)
-			map.host_grid_multi[j].w /= counter[j];*/
+			map.host_grid_multi[j].w /= counter[j];
 
 }
 
@@ -1321,7 +1318,7 @@ int main() {
 
 	read_map(map_file);
 	read_pts(pts_file);
-	readBLN(bln_file);
+	read_bln(bln_file);
 	multires(path);
 
 	return 0;

@@ -55,10 +55,10 @@ typedef struct polygon_ {
 } polygon;
 
 typedef struct slab_ {
-	vector<int2> m_points;
-	vector<int2> M_points;
-	vector<int> dx;
-	vector<int> dy;
+	point m_points;
+	point M_points;
+	int dx;
+	int dy;
 }slab;
 
 typedef struct maps_ {
@@ -69,8 +69,6 @@ typedef struct maps_ {
 	int dx,dy;
 	F* btm_map;
 	uchar4* host_info;
-	int* host_info_x_m; 
-	int* host_info_y_m;
 	int tot_blocks, bound_blocks;
 	int first_slab, last_slab;
 	int dxs, dys;

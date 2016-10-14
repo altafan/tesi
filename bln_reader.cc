@@ -1,5 +1,3 @@
-//#include "bln_reader.h"
-
 #include <iostream>
 #include <fstream>
 #include "types.h"
@@ -11,7 +9,7 @@
 using namespace std;
 
 polygon pol;
-slab slabs;
+vector<slab> slabs;
 
 point pol_mp,pol_Mp;
 int2 min_xy;
@@ -20,7 +18,7 @@ int2 s_min;
 int npoints;
 int dbg = 1;
 
-void readBLN(string path) {
+void read_bln(string path) {
 
 	string pathBLN = path+".BLN";
 
@@ -68,7 +66,7 @@ void readBLN(string path) {
 
 }
 
-void blnInterpolation() {
+void bln_interpolation() {
 
 	string path = "polygons/bln_raster.PTS";
 	FILE * file;
@@ -94,7 +92,7 @@ void blnInterpolation() {
 			tx += deltax / dd;
 			ty += deltay / dd;
 
-			fprintf(file,"%f %f 3 0\n",tx,ty);
+			fprintf(file,"%f %f 2 0\n",tx,ty);
 
 			l = sqrt((tx - x0) * (tx - x0) + (ty - y0) * (ty - y0));
 		}
@@ -103,19 +101,16 @@ void blnInterpolation() {
 
 	fclose(file);
 
-	if(dbg) printf("Polygon interpolation complete\n\n");
+	if(dbg) printf("\nPolygon interpolation complete\n");
 
 }
 
-void readGRD(string path, int n_slab) {
+void read_grd(string path, int n_slab) {
 
 	string pathGRD = path;
 
 	// dimensiona i vettori contenti le info delle tavolette
-	slabs.m_points.resize(n_slab);
-	slabs.M_points.resize(n_slab);
-	slabs.dx.resize(n_slab);
-	slabs.dy.resize(n_slab);
+	slabs.resize(n_slab);
 
 	s_max.x = 0;
 	s_max.y = 0;
@@ -134,21 +129,21 @@ void readGRD(string path, int n_slab) {
 
 		if(!file.fail()) {
 			file >> type;
-			file >> slabs.dx[i] >> slabs.dy[i];
-			file >> slabs.m_points[i].x >> slabs.M_points[i].x;
-			file >> slabs.m_points[i].y >> slabs.M_points[i].y;
+			file >> slabs[i].dx >> slabs[i].dy;
+			file >> slabs[i].m_points.x >> slabs[i].M_points.x;
+			file >> slabs[i].m_points.y >> slabs[i].M_points.y;
 
 			// trova coordinate della tavoletta con max(x,y)
-			if(slabs.M_points[i].x > s_max.x)
-				s_max.x = slabs.M_points[i].x;
-			if(slabs.M_points[i].y > s_max.y)
-				s_max.y = slabs.M_points[i].y;
+			if(slabs[i].M_points.x > s_max.x)
+				s_max.x = slabs[i].M_points.x;
+			if(slabs[i].M_points.y > s_max.y)
+				s_max.y = slabs[i].M_points.y;
 
 			// trova coordinate della tavoletta con min(x,y)
-			if(slabs.m_points[i].x < s_min.x)
-				s_min.x = slabs.m_points[i].x;
-			if(slabs.m_points[i].y < s_min.y)
-				s_min.y = slabs.m_points[i].y;
+			if(slabs[i].m_points.x < s_min.x)
+				s_min.x = slabs[i].m_points.x;
+			if(slabs[i].m_points.y < s_min.y)
+				s_min.y = slabs[i].m_points.y;
 
 		} else {
 			printf("Unable to open file. %s not found.\n\n", pathGRD.c_str());
@@ -159,20 +154,20 @@ void readGRD(string path, int n_slab) {
 	}
 	
 	// calcola il vertice in basso a sx della tavoletta più a sx interna al bounding box
-	min_xy.x = floor((((int)(pol_mp.x - s_min.x) / slabs.dx[0]) * slabs.dx[0] + s_min.x) / 10) * 10;
-	min_xy.y = floor((((int)(pol_mp.y - s_min.y) / slabs.dy[0]) * slabs.dy[0] + s_min.y) / 10) * 10;
+	min_xy.x = floor((((int)(pol_mp.x - s_min.x) / slabs[0].dx) * slabs[0].dx + s_min.x) / 10) * 10;
+	min_xy.y = floor((((int)(pol_mp.y - s_min.y) / slabs[0].dy) * slabs[0].dy + s_min.y) / 10) * 10;
 	
 	if(dbg) {
 		printf("Slabs read:\n");
 		printf("s_min: %d, %d\n", s_min.x, s_min.y);
 		printf("s_max: %d, %d\n", s_max.x, s_max.y);
 		printf("min_xy: %d, %d\n", min_xy.x, min_xy.y);
-		printf("dx dy: %d %d\n\n", slabs.dx[0], slabs.dy[0]);
+		printf("dx dy: %d %d\n\n", slabs[0].dx, slabs[0].dy);
 	}
 
 }
 
-int countGRD(string path) {
+int count_grd(string path) {
 
 	// esegue script che conta il numero di tavolette in slabs/
 	int status = system("./createGrid.sh");
@@ -191,25 +186,25 @@ int countGRD(string path) {
 
 }
 
-void raster(int n_slab) {
+void bounding_box(int n_slab) {
 
 	// calcola numero di righe e di colonne della griglia di tavolette
-	int cols = (s_max.x - s_min.x) / slabs.dx[0] + 1;
-	int rows = (s_max.y - s_min.y) / slabs.dy[0] + 1;
+	int cols = (s_max.x - s_min.x) / slabs[0].dx + 1;
+	int rows = (s_max.y - s_min.y) / slabs[0].dy + 1;
 
 	int m[rows][cols];
 
 	// calcola gli indici della griglia di tavolette in cui cade il bounding box
-	int pmi = rows - 1 - ((int)(pol_Mp.y - s_min.y)) / slabs.dy[0];
-	int pmj = (pol_mp.x - s_min.x) / slabs.dx[0];
-	int pMi = rows - ((pol_mp.y - s_min.y)/slabs.dy[0]) ;
-	int pMj = ((int)(pol_Mp.x - s_min.x)) / slabs.dx[0];	
+	int pmi = rows - 1 - ((int)(pol_Mp.y - s_min.y)) / slabs[0].dy;
+	int pmj = (pol_mp.x - s_min.x) / slabs[0].dx;
+	int pMi = rows - ((pol_mp.y - s_min.y) / slabs[0].dy) ;
+	int pMj = ((int)(pol_Mp.x - s_min.x)) / slabs[0].dx;	
 
 	// per ogni tavoletta calcola gli indici (la posizione nella griglia) e controlla
 	// se sta nell'intervallo degli indici del boundig box
     for(int k = 0; k < n_slab; ++k) {
-    	int j = ceil((slabs.m_points[k].x - s_min.x) / (float)slabs.dx[k]);
-    	int i = rows - 1 - ceil((slabs.m_points[k].y - s_min.y) / (float)slabs.dy[k]);
+    	int j = ceil((slabs[k].m_points.x - s_min.x) / (float)slabs[k].dx);
+    	int i = rows - 1 - ceil((slabs[k].m_points.y - s_min.y) / (float)slabs[k].dy);
 
     	if(pmi <= i && i <= pMi && pmj <= j && j <= pMj) 
     		m[i][j] = k+1;
@@ -222,11 +217,11 @@ void raster(int n_slab) {
     ofstream file;
     file.open("map_info.txt");
     file << rows << "\n";
-    file << (pMi - pmi + 1) * slabs.dy[0] << " " << (pMj - pmj + 1) * slabs.dx[0] << "\n";
+    file << (pMi - pmi + 1) * (slabs[0].dy - 1) << " " << (pMj - pmj + 1) * (slabs[0].dx - 1)<< "\n";
     file << min_xy.x << " " << min_xy.y << "\n";
     file << 1 << " " << 1 << "\n";
     file << cols * pmj + (rows - pMi) << " " << cols * pMj + (rows - pmi)<< "\n";
-    file << slabs.dx[0] << " " << slabs.dy[0] << "\n";
+    file << slabs[0].dx << " " << slabs[0].dy << "\n";
     file.close();
 
     if(dbg) { 
@@ -250,14 +245,15 @@ int main() {
 	string BLN_path = "polygons/bln2";
 	string GRD_path = "slabs/";
 
-	readBLN(BLN_path);
-	blnInterpolation();
+	read_bln(BLN_path);
 
-	int n_slab = countGRD(GRD_path);
+	int n_slab = count_grd(GRD_path);
 
-	readGRD(GRD_path, n_slab);
+	read_grd(GRD_path, n_slab);
 	
-	raster(n_slab);
+	bounding_box(n_slab);
+
+	bln_interpolation();
 
 	return 0;
 
