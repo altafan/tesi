@@ -248,7 +248,8 @@
 
 			\subsubsection{Un primo confronto}
 				Mettendo a confronto questa nuova soluzione con quella gi\`{a} esistente la differenza evidente sta nella notevole riduzione della matrice a multi risoluzione. In questo lavoro di tesi, fino a questo momento infatti si \`{e} operato sul boinding box mentre nella versione originale si lavorava sull'intera mappa e fin dalle prime stampe che si possono eseguire su questa frazione di codice si pu\`{o} notare che, confrontando le dimensioni delle due matrici a multi risoluzione, la "nuova" ha dimensioni molto inferiori.\\
-				Nel codice di partenza i seed points dai quali vengono completate le bitmask sono indicati dall'utente tramite un file \texttt{.PTS}, mentre in questa nuova versione viene interpolato il perimetro del poligono ricavando i punti in modo automatico. Salvandoli in un file .PTS dal nome costante e usandoli come seed points vengono create le bitmask dei 4 livelli di risoluzione senza intervento da parte dell'utente, diminuendo la possibilit\`{a} di commettere errore da parte di quest'ultimo. Devo aggiungere qualcos'altro?
+				Inoltre, nel codice di partenza i seed points dai quali vengono completate le bitmask sono indicati dall'utente tramite un file \texttt{.PTS}, mentre in questa nuova versione viene interpolato il perimetro del poligono ricavando i punti in modo automatico e, salvandoli in un file dello stesso formato, \`{e} possibile riutilizzare la parte di algoritmo che li processa.\\
+				All'utente \`{e} ancora permesso specificare i seed points manualmente, semplicemente i due file .PTS vengono uniti in uno unico.
 
 			\subsubsection{Divisione tra punti interni ed esterni}
 				La matrice dei blocchi in cui questi vengono memorizzati in ordine di codice si chiama \texttt{map.host\_info}.\\
@@ -361,12 +362,23 @@
 
 				Il processo \`{e} speculare per la coda dei punti interni, in cui l'espansione viene eseguita esclusivamente per i punti interni al poligono.
  			\subsubsection{Condizioni di bordo}
- 				Quando le code sono state svuotate tutti i punti in \texttt{map.host\_info} hanno valore \texttt{BIT\_EXTERN} o 0. \\
- 				Le celle sul bordo del poligono devono contenere le condizioni di bordo ed oltre a queste, \`{e} necessario sapere a quali posizioni dei vicini questi valori fanno riferimento. \\
- 				Ogni cella pu\`{o} avere 1, 2 o 3 vicini esterni. Dato che i punti con un singolo vicino o quelli con tre vicini esterni non sono frequenti, vengono calcolate le condizioni di bordo delle sole celle con due vicini esterni.\\
- 				Per ogni punto di \texttt{map.host\_info} viene controllato che sia interno e se stia sul bordo e, contando quanti vicini hanno valore \texttt{BIT\_EXTERN}, solo a quelli che hanno due vicini esterni viene assegnato il valore temporaneo 2.\\
- 				Dopo una prima spazzata sulla matrice di blocchi, viene eseguita una seconda lettura dei valori delle celle e ad ogni cella con valore uguale a 2, viene assegnato un numero che rappresenta una combinazione dei valori  \texttt{BIT\_N}, \texttt{BIT\_S}, \texttt{BIT\_W}, \texttt{BIT\_E} a seconda di quali siano i vicini coinvolti. Nel campo y dell'elemento generico \texttt{map.host\_info[idx]} viene salvato (non so cosa), mentre nei campi z e w vengono salvati i tipi di condizione al contorno (vedi "Poligono" nella parte introduttiva) relativi ai vicini coinvolti.
+ 				Quando le code sono state svuotate tutti i punti in \texttt{map.host\_info} hanno valore \texttt{BIT\_EXTERN} o 0. 
+ 				\newpage
+ 				\begin{figure}[ht]
+ 					\centering
+ 					\includegraphics[height=5cm]{img/bordi.png}
+ 					\caption{Esempio di bounding block dopo aver processato le code}
+ 				\end{figure}
+ 				Le celle sul bordo del poligono devono contenere le condizioni di bordo ed oltre a queste, \`{e} necessario sapere a quali posizioni dei vicini questi valori fanno riferimento. Vegnono perci\`{o} definiti 4 valori \texttt{BIT\_N}, \texttt{BIT\_S}, \texttt{BIT\_W}, \texttt{BIT\_E} che esprimono le posizioni dei vicini esterni di un punto intenro che sul bordo del poligono.\\
+ 				Ogni cella pu\`{o} avere 1, 2 o 3 vicini esterni. 
+ 				Per ogni punto di \texttt{map.host\_info} viene controllato che sia interno e se stia sul bordo e, contando quanti vicini hanno valore \texttt{BIT\_EXTERN}, viene assegnato il valore temporaneo 2 solo a quelli che hanno al massimo due vicini esterni.\\
+ 				Dopo questa prima spazzata sulla matrice di blocchi, viene eseguita una seconda lettura dei valori delle celle e ad ogni cella con valore uguale a 2, viene assegnato un numero che rappresenta una combinazione dei valori  \texttt{BIT\_N}, \texttt{BIT\_S}, \texttt{BIT\_W}, \texttt{BIT\_E} a seconda di quali siano le posizioni dei vicini esterni coinvolti. \\
+ 				Al campo x dell'elemento generico \texttt{map.host\_info[idx]} viene assegnato uno dei quattro valori se il punto ha un solo vicino esterno oppure una combinazione lineare di due valori se ha due vicini, mentre nel nei campi z e w vengono salvati i tipi di condizione al contorno (vedi "Poligono" nella parte introduttiva) relativi ai vicini coinvolti.
 			\subsubsection{Caricamento delle tavolette}
-
+				Una volta che la matrice di blocchi contiene tutte le informazioni corrette, l'ultima parte di \texttt{multires()} si occupa di caricare le altezze del terreno contenute nei file di tavolette all'interno della matrice a multi risoluzione \texttt{map.host\_grid\_multi}.\\
+				Va detto che questa parte di codice \`{e} stata implementata prima in ordine cronologico rispetto a quella relativa alla matrice di blocchi e, dunque, vengono caricati i valori delle altezze del terreno di tutto il bounding box, senza tener conto se i punti in coordinate reali a cui questi valori si riferiscono siano interni o esterni al poligono. Non viene quindi consultata \texttt{map.host\_info} durante quest'ultima fase di caricamento.\\
+				Vengono cos\`{i} processate tutte le tavolette da \texttt{map.first\_slab} a \texttt{map.last\_slab}, due variabili che contengono, come espresso dal nome, il numero della prima e dell'ultima tavoletta da caricare, ovvero le tavolette che contengono \texttt{min\_xy} e \texttt{max\_xy}.\\
+				Per ogni file \texttt{.grd} vengono lette le informazioni dell'intestazione (vedi "Tavolette" nella sezione introduttiva) staticamente e, invece, le altezze del terreno attraverso un ciclo che termina quando viene letto il carattere speciale \texttt{EOF} (End Of File). \\
+				All'interno dei file le altezze del terreno sono elencate in ordine di riga dunque il primo valore letto si riferisce al punto in coordinate reali \texttt{m\_point} indicato nell'intestazione e l'ultimo al punto \texttt{M\_point}. Considerando allora una tavoletta come una matrice $dxs$ x $dys$ di punti, il punto in posizione [0, 0] \`{e} uguale ad \texttt{m\_point} e il punto in posizione [$dxs$-1][$dys$-1] \`{e} uguale ad \texttt{M\_point}. \\
 			%\subsubsection{Secondo confronto}
 

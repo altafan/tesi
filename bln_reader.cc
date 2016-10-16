@@ -92,7 +92,7 @@ void bln_interpolation() {
 			tx += deltax / dd;
 			ty += deltay / dd;
 
-			fprintf(file,"%f %f 2 0\n",tx,ty);
+			fprintf(file,"%f %f 3 0\n",tx,ty);
 
 			l = sqrt((tx - x0) * (tx - x0) + (ty - y0) * (ty - y0));
 		}

@@ -433,7 +433,7 @@ void multires(string path) {
 		if(dbg) printf("Level %d: ratio %f (%d cells)\n",i,(ct+0.0)/(sizex*sizey),ct);	  
 	}  
 	
-	if(dbg) {
+	if(1) {
 		printf("\nCelle originali %d, celle multires %d\n",map.ncols*map.nrows,tot_blocks*BLOCKSIZE_X*BLOCKSIZE_Y);
 	    printf("Compressione: %2.1fx\n\n",1.0/((0.0+tot_blocks)*BLOCKSIZE_X*BLOCKSIZE_Y/map.ncols/map.nrows));
 
@@ -1217,6 +1217,16 @@ void multires(string path) {
 				    }               
 				}
 			}
+
+	for(int y = BLOCKSIZE_Y-1;y>=0;--y){
+  		int x_multi = 153 % x_blocks;
+  		int y_multi = 153 / x_blocks;
+  		for(int x = 0;x<BLOCKSIZE_X;++x){
+  			int idx = (y_multi*BLOCKSIZE_Y+y)*BLOCKSIZE_X*x_blocks+(BLOCKSIZE_X*x_multi+x);
+  			printf("%3d ",map.host_info[idx].w);
+  		}
+  		printf("\n");
+  	}
 
 	//FASE 7: Caricamento delle tavolette
 	int border_top = map.last_slab % map.slabs_nrows; // per caricare le tavolette giuste
