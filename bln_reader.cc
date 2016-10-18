@@ -242,7 +242,7 @@ void bounding_box(int n_slab) {
 
 int main() {
 
-	string BLN_path = "polygons/bln2";
+	string BLN_path = "polygons/prova";
 	string GRD_path = "slabs/";
 
 	read_bln(BLN_path);

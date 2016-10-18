@@ -1,8 +1,7 @@
 \documentclass[a4paper,12pt,oneside]{report}
 
 \usepackage{pacchetti}																%PACCHETTI USATI
-\usepackage{macro}																		%MACRO IMPLEMENTATE
-%\makeindex																						%CREA INDICE ANALITICO
+\usepackage{macro}																	%MACRO IMPLEMENTATE
 
 \begin{document}  
 	\title{Studio di algoritmi per la rappresentazione di dati geografici con multi risoluzione}
@@ -20,7 +19,6 @@
 	\newpage	
 	\listoffigures		
 	\newpage	
-	%\listoftables	%\lstlistoflistings
 	%===========================
 	\input{introduzione}
 	%===========================
@@ -29,12 +27,11 @@
 	\input{cap_2}
 	%===========================
 	\input{cap_3}
-	%\appendix
-	%\input{codifica}
-	
-	\bibliographystyle{alpha}
-	\bibliography{bibliografia}
-	\addcontentsline{toc}{chapter}{Bibliografia}
+	%===========================
+	\input{cap_4}
+	%===========================
+	\input{cap_5}
+	%===========================
+	\input{bibliografia}
 
-	%\printindex
 \end{document}

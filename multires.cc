@@ -1218,7 +1218,7 @@ void multires(string path) {
 				}
 			}
 
-	for(int y = BLOCKSIZE_Y-1;y>=0;--y){
+	/*for(int y = BLOCKSIZE_Y-1;y>=0;--y){
   		int x_multi = 153 % x_blocks;
   		int y_multi = 153 / x_blocks;
   		for(int x = 0;x<BLOCKSIZE_X;++x){
@@ -1226,7 +1226,7 @@ void multires(string path) {
   			printf("%3d ",map.host_info[idx].w);
   		}
   		printf("\n");
-  	}
+  	}*/
 
 	//FASE 7: Caricamento delle tavolette
 	int border_top = map.last_slab % map.slabs_nrows; // per caricare le tavolette giuste
@@ -1297,7 +1297,6 @@ void multires(string path) {
 
 				        		map.host_grid_multi[idx].w += h_val;
 				        		++counter[idx];
-
 					        }  	
 						}
 					}
