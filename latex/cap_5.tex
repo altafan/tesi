@@ -1,1 +1,38 @@
 \chapter{Conclusioni e sviluppi futuri}
+	In quest'ultimo capitolo vengono fatte le considerazioni finali sulla memoria necessaria da allocare per contenere la matrice a multi risoluzione e vengono elencati i punti del progetto da poter sviluppare in futuro.
+
+	\section{Memoria utilizzata}
+		Oltre all'altezza vengono memorizzati altri valori di variabili legate al flusso dell'acqua su una superficie, come la portata o la ripidit\`{a} del terreno ad esempio. Ogni cella della matrice a multi risoluzione utilizza, cos\`{i}, dai 15 ai 20 float per memorizzare tutte le informazioni.\\
+		Un float \`{e} un valore in virgola mobile che rappresenta un numero reale e sono necessari 32 bit, ovvero 4 byte, di memoria per la sua allocazione. Ogni cella occupa dunque al pi\`{u} \textbf{80 byte} di memoria.\\
+		Per calcolare lo spazio di memoria necessario all'allocazione della matrice bisogna tenere conto anche della dimensione di una tavoletta perch\`{e} quando vengono letti, i valori contenuti al suo interno vengono salvati in variabili temporanee di tipo float. In questo progetto sono state utilizzate tavolette di 631x301 punti, dunque vengono allocati 631x301 floats che vengono utilizzati per tutti i valori delle tavolette.\\
+		Moltiplicando la memoria allocata di una singola cella per il numero di celle della matrice a multi risoluzione e sommando la dimensione di una tavoletta, si ottiene lo spazio di memoria necessario alla matrice a multi risoluzione per essere allocata.\\
+		Prendendo ad esempio il poligono \texttt{pol2.BLN}, lo spazio di memoria necessario a contenere la matrice bounding box sarebbe:
+		\[
+			4*(20*5292000+631*301) = 424119724 B
+		\]
+		Ovvero 404.5MB! Per la matrice a multi risoluzione generata con seed points forzati a livello 3 sono invece necessari:
+		\[
+			4*(20*131072+631*301) = 11245484 B
+		\]
+		cio\`{e} 10MB, mentre se si forza la risoluzione dei seed points a livello 2 sono necessari 20MB di memoria. Se si moltiplicano i MB necessari alla matrice a multi risoluzione per il rispettivo tasso di compressione si ottiene correttamente la memoria occupata dalla matrice del bounding box.
+
+		Come detto nella parte introduttiva, la simulazione del corso d'acqua viene eseguita su una GPU, la quale dispone di 12GB di memoria. 12GB sono dunque il limite massimo di memoria occupabile dalla matrice a multi risoluzione. Una matrice di 12GB contiene circa $12*10^9/80 = 150$ milioni di celle, che significa poter rappresentare al pi\`{u}
+		\[
+			4*20*1.5x10^{8} = 7.5x10^{9} 
+		\]
+		7,5 miliardi di celle, ovvero un'area di 86x86$km^2$ e circa 600GB di memoria!
+
+		Queste considerazioni sono state fatte in linea teorica. Infatti solitamente non si pu\`{o} abbassare o alzare la risoluzione a piacimento, ma ci sono delle propriet\`{a} numeriche della simulazione che si vogliono mantenere. Il poligono, ad esempio, ha un livello di risoluzione abbastanza alto dove entra l'acqua, ma in presenza di ponti o edifici \`{e} richiesta la risoluzione massima. Per zone pianeggianti come i campi coltivati, invece, la risoluzione pu\`{o} anche essere pi\`{u} bassa. 
+
+		Nella versione precedente dato che, invece, le tavolette vengono caricate da subito, l'impatto in memoria, con le stesse 100 tavolette, \`{e} di 100 volte maggiore rispetto a quanto mostrato.
+
+	\section{Sviluppi futuri}
+		In questo progetto sono stati portati a compimento gli obiettivi prefissati, ma il lavoro che \`{e} stato svolto risolve solo una parte del problema legato alla rappresentazione di dati geografici in multi risoluzione.\\
+		Di seguito sono elencati gli sviluppi futuri di questo lavoro di tesi:
+		\begin{itemize}
+			\item La prima operazione da eseguire \`{e} l'integrazione del nuovo codice con il sistema gi\`{a} esistente, anche se, in generale, \`{e} stato realizzato in modo tale da essere inserito facilmente all'interno del programma principale.
+			\item In questo progetto, lavorando su \texttt{map.host\_info} sono state gestite le condizioni al contorno e le eventuali richieste di risoluzione senza considerare le condizioni di muro. Una cella pu\`{o} essere tappata, ovvero vi pu\`{o} essere assegnata una condizione di muro che specifica che l'area corrispondente \`{e} occupata da qualcosa, come pu\`{o} essere un argine o il muro di una casa. Se, al momento, venisse richiesto di tappare una cella di \texttt{map.host\_info}, non verrebbero assegnato ad essa la corrispondente condizione di muro.
+			\item Per ottimizzare la suddivisione dei punti fra interni ed esterni sarebbe possibile identificare quali blocchi sono sicuramente fuori dal poligono cos\`{i} da diminuire il lavoro compiuto sulle code.
+			\item Al momento vengono caricate le altezze di tutti i punti del bounding box. Consultando le informazioni sulla posizione rispetto al poligono delle celle della matrice dei blocchi sarebbe possibile caricare solo le altezze dei punti interni.
+			\item Quando vengono sistemate le condizioni al contorno, \`{e} stato detto che ogni cella pu\`{o} avere 1,2 o 3 vicini esterni. Nella versione originale del progetto \`{e} stata implementata una procedura che elimina in modo ricorsivo tutti i casi in cui una cella ha 3 condizioni di bordo, tappandola e aggiornando la matrice. Questa parte di codice dovrebbe essere esportata ed integrata nella nuova versione.
+		\end{itemize} 

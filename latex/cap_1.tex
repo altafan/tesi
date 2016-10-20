@@ -1,48 +1,40 @@
 \chapter{Nozioni preliminari}
 
 \section{Immagini}
-
 	Un'immagine in computer grafica viene rappresentata come una matrice rettangolare di punti chiamati pixels. 
 	In questo progetto, utilizzando mappe geografiche altimetriche, ogni punto della matrice rappresenta, invece, l'altezza del terreno di una area specifica, quindi oltre all'altezza vengono memorizzati anche la larghezza del singolo pixel (1m ad esempio) e la georeferenziazione, ovvero si specifica la posizione geografica di un punto della matrice, in modo da poter posizionare la matrice correttamente nello spazio. 
 
-	\subsection{GIS}
-		Le mappe geografiche utilizzate in questo progetto vengono prese da un particolare database geografico chiamato GIS. Un Geographic Information System \`{e} un sistema progettato per ricevere, immagazzinare, elaborare, analizzare, gestire e rappresentare dati di tipo geografico. \\ 
-		Le immagini utilizzate in questo lavoro di tesi sono una rielaborazione compiuta dal dipartimento di Ingegneria Idraulica sulla base delle immagini GIS.
-	\subsection{Tavolette}
-		Per semplificare la gestione di queste grandi immagini, va tuttavia precisato che una generica mappa \`{e} in realt\`{a} composta da pi\`{u} sottomatrici chiamate tavolette e, quindi, puo essere vista come una matrice \textit{N} x \textit{M} di tavolette, che a loro volta sono matrici \textit{n} x \textit{m} di punti.
-	    Nel lavoro di tesi si assume che ogni immagine sia composta da una griglia ordinata di file numerati da 1 a $N*M$ con estensione .grd.\\
-		Un file .grd contiene un'intestazione in cui sono indicati: 
+	\subsection{GIS}	
+		Un sistema di informazione geografica (GIS) \`{e} un sistema progettato per acquisire, memorizzare, manipolare, analizzare, gestire e rappresentare dati spaziali o geografici. L'acronimo GIS \`{e} talvolta utilizzato anche in riferimento a GIScience, ovvero Geographic Information Science, in riferimento alla disciplina accademica che studia i sistemi informativi geografici, che \`{e} un ramo della Geoinformatica. Gli applicativi GIS sono strumenti che consentono agli utenti di creare query interattive, analizzare informazioni spaziali, modificare i dati nelle mappe, e presentare i risultati di tutte queste operazioni. \cite{gis}\\
+		Le immagini utilizzate in questo lavoro di tesi sono una rielaborazione compiuta dal dipartimento di Ingegneria Idraulica sulla base delle immagini prelevate da un database geografico.
+	\subsection{GRD}
+		GRD \`{e} l'estensione dei file \textit{ARC/INFO ASCII Grid}. ARC/Info \`{e} un package GIS commerciale di propriet\`{a} della \textit{ESRI Corp.} e ARC/Info ASCII Grid si riferisce allo specifico formato non proprietario sviluppato per ARC/Info.\cite{grd}\\
+		Un file con questa estensione \`{e} costituito da un'intestazione in cui sono elencate le informazioni relative al dominio geografico, seguita dai valori delle celle della griglia che rappresenta.
+		Nell'intestazione di un file .grd sono indicati: 
 		\begin{itemize}
 			\item il numero di righe e di colonne della tavoletta (\textit{n,m})
 			\item il punto con coordinate minime e il punto con coordinate massime (il vertice in basso a sinistra e il vertice in alto a destra della tavoletta) 
 			\item la coppia di altezze del terreno con valori minimo e massimo
 		\end{itemize}
-
+		Quello che segue dopo l'header sono le altezze del terreno per ogni punto della tavoletta.
 		\begin{figure}[htbp]
 			\centering
-			\begin{minipage}[c]{.40\textwidth}
-				\centering\setlength{\captionmargin}{0pt}
-				\includegraphics[width=4cm]{img/header.png}
-				\caption{Header di un file .grd}
-			\end{minipage}
-			\hspace{1cm}
-			\begin{minipage}[c]{.40\textwidth}
-				\centering\setlength{\captionmargin}{0pt}
-				\includegraphics[width=4cm]{img/tavolette.png}
-				\caption{Ordinamento delle tavolette nella matrice}
-			\end{minipage}
+			\includegraphics[height=4cm]{img/header.png}
+			\caption{Header di un file .grd}
 		\end{figure}
-		Quello che segue dopo l'header sono le altezze del terreno per ogni punto della tavoletta.\\ 	
-		Ogni file viene dunque letto e salvato in un array di tavolette in cui sono memorizzate solo le informazioni necessarie presenti nell'header:
+	\subsection{Tavolette}
+		Per semplificare la gestione di queste grandi immagini, va tuttavia precisato che una generica mappa \`{e} in realt\`{a} composta da pi\`{u} sottomatrici chiamate tavolette e, quindi, puo essere vista come una matrice \textit{N} x \textit{M} di tavolette, che a loro volta sono matrici \textit{n} x \textit{m} di punti.
+	    Nel lavoro di tesi si assume che ogni immagine sia composta da una griglia ordinata di file numerati da 1 a $N*M$ con estensione .grd.\\
+	    Ogni file viene dunque letto e salvato in un array di tavolette in cui sono memorizzate solo le informazioni necessarie presenti nell'header:
 		\begin{itemize}
 			\item la dimensione di ogni tavoletta (numero di righe e di colonne)
 			\item le coordinate dei punti min e max
 		\end{itemize}
-		\begin{figure}[htbp]
+	    \begin{figure}[htbp]
 			\centering
-			\includegraphics[width=8cm]{./img/vettore_tavolette.png}
-			\caption{Array di tavolette}
-		\end{figure}
+			\includegraphics[height=4cm]{img/tavolette.png}
+			\caption{Ordinamento delle tavolette nella matrice}
+		\end{figure}	
 
 	\subsection{Poligono}
 		In genere vengono utilizzate immagini di mappe geografiche e data la loro grandezza, sulla mappa viene delineata un'area di interesse, ovvero un poligono che delimita la zona entro la quale compiere una simulazione di un flusso d'acqua. 
@@ -50,9 +42,10 @@
 		\begin{itemize}
 			\item 0 - Nessuna condizione
 			\item 1 - Muro
-			\item 2 - Acqua in entrata
-			\item 3 - Acqua in uscita
-			\item 4 - Terreno lontano
+			\item 2 e 6 - Condizioni di portata (quantit\`{a} di acqua che entra nel tempo)
+			\item 3 - Condizioni di livello
+			\item 4 - Far field
+			\item 5 - Condizione HQ
 		\end{itemize}
 		Le informazioni del poligono vengono salvate in una struttura dati composta (\texttt{struct}) contenente 2 array, rispettivamente quello delle coordinate dei vertici e quello delle condizioni di bordo.
 		\begin{figure}[htbp]
@@ -62,14 +55,7 @@
 		\end{figure}
 
 \section{Multi risoluzione}
-	
 	Quando un'immagine viene discretizzata con una griglia cartesiana, i dati sono memorizzati con un array bidimensionale. Date, dunque, le coordinate del vertice minimo della griglia, gli indici della matrice utilizzati per scorrere l'array permettono di calcolare le coordinate reali usate nel sistema di riferimento attraverso la formula:
-	\newpage
-	\begin{figure}[b]
-		\centering
-		\includegraphics[height=5cm]{img/blocchi2.png}
-		\caption{Relazione fra i blocchi di diverso livello}
-	\end{figure}
 	\begin{verbatim}
 		real_x = min_x + j * dx;
 		real_y = min_y + i * dy
@@ -77,22 +63,43 @@
 	Una matrice a multi risoluzione \`{e} una matrice di 10-50 volte ridotta rispetto alle dimensioni dell'array bidimensionale, ed \`{e} composta da blocchi a differenti livelli di risoluzione.   
 	 
 	\subsection{Blocco}  
-	Ogni blocco contiene \textit{BS} x \textit{BS} celle ma vengono usati diversi livelli di risoluzione: 
-	\begin{itemize}
-		\item livello 1 con cella di dimensione $\Delta_1$
-		\item livello 2 con cella di dimensione $\Delta_2 = 2 * \Delta_1$ \\
-		\textbf{\vdots}
-		\item livello n con cella di dimensione $\Delta_n = 2^{n-1} * \Delta_1$
-	\end{itemize}
-	Ogni cella rappresenta un punto in coordinate geografiche. A livello 1, ovvero a risoluzione massima, ogni cella rappresenta esattamente un punto geografico ($\Delta_1$=distanza fra i puni geografici), mentre a livelli di risoluzione pi\`{u} alti, ovvero a risoluzione minore, le celle rappresentano punti geografici a distanza $\Delta_i$. 
-	In questa tesi \textit{BS} viene assunto uguale a 8 o a 16, ma pu\`{o} avere valore uguale a qualunque potenza di 2, con n = 4 livelli di risoluzione.\\
-	Nella matrice a multi risoluzione il valore di una cella di un blocco a massima risoluzione \`{e} uguale all'altezza del terreno del rispettivo punto in coordinate geografiche, mentre il valore di una a risoluzione minore rappresenta una media delle altezze di $\Delta_i * \Delta_i$ punti geografici.
-	\newpage
+		Ogni blocco contiene \textit{BS}x\textit{BS} celle ma vengono usati diversi livelli di risoluzione: 
+		\begin{itemize}
+			\item livello 1 con cella di dimensione $\Delta_1$
+			\item livello 2 con cella di dimensione $\Delta_2 = 2 * \Delta_1$ \\
+			\textbf{\vdots}
+			\item livello n con cella di dimensione $\Delta_n = 2^{n-1} * \Delta_1$
+		\end{itemize}
+		Ogni cella della matrice a multi risoluzione rappresenta un blocco di punti in coordinate geografiche. A livello 1, ovvero a risoluzione massima, assunto \textit{BS} uguale a 16, ogni cella rappresenta un blocco di punti a distanza $\Delta_1$ tra loro, ovvero la distanza fra i punti geografici (solitamente 1m) e quindi rappresenta un blocco di 256 punti in coordinate geografiche. Ad un livello \textit{i} di risoluzione pi\`{u} alto (cio\`{e} a risoluzione minore), una cella rappresenta, invece, un blocco di punti che hanno distanza $\Delta_i$ l'uno dal'altro, ovvero rappresenta un blocco di $BS*BS*\Delta_i$ punti. Un blocco a livello 3 di risoluzione, ad esempio, rappresenta $16*16*2^2*1m = 1024$ punti in coordinate reali.\\ 
+		In questa tesi \textit{BS} viene assunto uguale a 16, ma pu\`{o} avere valore uguale a qualunque potenza di 2, ed n = 4 livelli di risoluzione. 
+		\begin{figure}[htbp]
+			\centering
+			\includegraphics[height=5cm]{img/blocchi2.png}
+			\caption{Relazione fra i blocchi di diverso livello}
+		\end{figure}
+
 	\subsection{Matrice di blocchi} 
-	Una volta creati, i blocchi vengono codificati e memorizzati in una matrice in cui sono ordinati secondo il numero di blocco.\\ Cos\`{i} facendo viene modificato l'originale rapporto di vicinanza fra i vari blocchi; in seguito verr\`{a} mostrato come, con opportuni calcoli e opportune strutture dati di supporto, \`{e} possibile mantenerlo.
-	\begin{figure}[htbp]
-		\centering
-		\includegraphics[width=12cm]{img/matrice_blocchi.png}
-		\caption{Esempio di matrice a multi risoluzione (a sinistra) e di matrice dei blocchi (a destra)}
-	\end{figure}
-	
+		I blocchi vengono creati a partire da un set di seed points e, una volta generati, vengono codificati e memorizzati in una matrice in cui sono ordinati secondo il numero che viene loro assegnato. Con questo tipo di ordinamento viene alterato l'originale rapporto di vicinanza tra i blocchi.
+		\begin{figure}[htbp]
+			\centering
+			\includegraphics[width=12cm]{img/matrice_blocchi.png}
+			\caption{Esempio di matrice a multi risoluzione (a sinistra) e di matrice dei blocchi (a destra)}
+		\end{figure}\\
+		I blocchi, come visto, hanno dimensione diversa, ma vengono memorizzati nella matrice tutti alla stessa dimensione $BSxBS$. In ogni blocco a risoluzione \textit{i} le celle rappresentano gli intervalli di punti a distanza $\Delta_i$ l'uno dall'altro.\\
+		In ogni elemento della matrice di blocchi \`{e} contenuta l'informazione relativa alla posizione del punto -- o intervallo di punti -- in coordinate reali rispetto al poligono, ovvero se \`{e} interno o esterno al poligono. 
+
+	\subsection{Vicini di blocco}
+		Per suddividere i punti fra interni ed esterni viene eseguito il controllo su un sottoinsieme di elementi della matrice e per ognuno di essi viene espansa la ricerca ai vicini Nord/Sud/Est/Ovest. Dato che la dispozione fisica dei blocchi \`{e} diversa da quella logica e che, oltretutto, due blocchi adiacenti possono essere a due livelli di risoluzione differenti, per utilizzare questa metodologia di ricerca \`{e} necessario che per ogni elemento della matrice si memorizzino i vicini N/S/W/E corretti e i rispettivi livelli di risoluzione. 
+		\begin{figure}[htbp]
+			\centering
+			\includegraphics[height=7cm]{img/blocchi_vicini.png}
+		\end{figure}\\
+		Nell'immagine si vede come per una cella sulla corince del blocco i vicini "interni" siano sempre alla stessa risoluzione \textit{(a)}, mentre quelli appartenti ad un blocco diverso possono essere allo stesso livello, a un livello di risoluzione maggiore \textit{(b)} o ad uno inferiore \textit{(c)}.
+
+	\subsection{Condizioni di bordo}
+		Ognuna delle celle che sta sul perimetro del poligono pu\`{o} avere 1, 2 o 3 vicini esterni e, in base alla posizione di quest'ultimi, ad esse viene assegnato un valore speciale che permette di riconoscere quali siano le direzioni (punti cardinali) dei vicini.  
+		\begin{figure}[htbp]
+			\centering
+			\includegraphics[height=8cm]{img/condizioni.png}
+		\end{figure}\\	
+		In questo progetto vengono calcolate le condizioni al contorno delle celle che hanno al pi\`{u} 2  vicini.

@@ -1,19 +1,19 @@
 \chapter{Obiettivi}
 
 	\section{Stato dell'arte}
-	Il codice originale di partenza \`{e} strutturato in maniera tale che in una prima fase vengano letti i dati relativi all'immagine e al poligono e salvati rispettivamente in un array bidimensionale e in una struct contentente due array mono dimensionali (vertici e condizioni di bordo). 
+	Nella versione originale del codice vengono per prima cosa memorizzati in due strutture dati le informazioni contenute nei file relativi all'immagine e al poligono. La matrice relativa all'immagine viene memorizzata in un array monodimensionale, mentre viene utilizzata una \texttt{struct} formata da due vettori per contenere le coordinate dei vertici del poligono e le condizioni di bordo.
 
-	Viene, poi, eseguito un controllo per ogni punto della matrice per stabilire se questo sia interno o esterno al poligono e, in seguito, per tutte le celle vengono calcolate le condizioni di bordo. \\
-	Una volta terminate le fasi di caricamento e di calcolo delle informazioni necessarie, viene generata la multi risoluzione sull'intera mappa a partire da un set di seed points letti in input da file.
+	In secondo luogo, operando sulla matrice dell'immagine, ad ogni cella viene assegnato un valore che indica se il corrispondente punto in coordinare reali \`{e} interno o esterno al poligono. Vengono, infine, calcolate le condizioni al contorno dei punti sul perimetro del poligono.
+
+	Oltre all'informazione della posizione rispetto al poligono, alle celle della matrice vengono anche assegnati i valori delle altezze del terreno e, solo in seguito, viene creata la matrice a multi risoluzione, in cui questi valori vengono copiati. 
 
 	Il problema legato a questo tipo di approccio sta nel fatto che la matrice a multi risoluzione viene creata sulla base delle dimensioni della matrice che rappresenta la mappa altimetrica. \\
-	Anche se le dimensioni della matrice a multi risoluzione sono inferiori fra le 10 e le 50 volte rispetto a quelle dell'immagine, la memoria da allocare rappresenta un collo di bottiglia per il programma che, in seguito, sfrutta la matrice a multi risoluzione per la simulazione del corso d'acqua.
+	Anche se le dimensioni della matrice a multi risoluzione sono inferiori fra le 10 e le 50 volte rispetto a quelle dell'immagine, \`{e} comunque necessario molto spazio in memoria per poterla allocare, date le grandi dimensioni dell'immagine.
 	\section{Obiettivo della tesi}
-	L'obiettivo di questa tesi \`{e}, dunque, quello di modificare il codice sorgente adottanto un approccio diverso in modo tale da creare la matrice a multi risoluzione prima del caricamento delle tavolette, e progettare l'algoritmo cos\`{i} da \`{i}occupare meno spazio in memoria per la memorizzazione della matrice a multi risoluzione. 
-
+	L'obiettivo di questa tesi \`{e}, dunque, quello di riutilizzare il codice originale in modo tale da creare una nuova versione del programma in cui venga ridotto l'impatto in memoria della matrice a multi risoluzione, nella quale i valori delle altezze sono caricate direttamente dai file solo dopo che questa \`{e} stata creata.
 	\section{Soluzioni adottate}
-	La soluzione adottata per ovviare al problema dell'allocazione di memoria \`{e} realizzata cos\`{i} da caricare inizialmente la struttura della matrice di tavolette e gli array del poligono e individuare la sottomatrice (bounging box) in cui questo ricade, sfruttando gli indici della matrice, calcolabili attraverso le coordinate geografiche (vengono lette solo le intestazioni delle tavolette!).\\ 
-	Operando sul bounding box e partendo, poi, da un insieme di punti che rappresentano il perimetro del poligono, viene creata la matrice a multi risoluzione, caricando le altezze di tutti i punti delle tavolette solo alla fine, riducendo cos\`{i} lo spazio di memoria d'allocazione inizializzando, in una prima fase iniziale, tutti i valori delle celle della matrice ad un valore di default.
-	Quando, in seguito, vengono lette le informazioni delle tavolette, il problema a cui bisogna ovviare \`{e} quello di caricare i valori delle altezze del terreno nelle corrette celle della matrice a multi risoluzione, che viene risolto attraverso opportuni calcoli ed opportune strutture dati di supporto.
+	Per ovviare al problema dell'allocazione di memoria, nella nuova versione del programma, operando sulla matrice di tavolette, viene identificata la sottomatrice di punti che contiene il poligono, che viene chiamata \textbf{bounding box}.\\
+	Creando la matrice a multi risoluzione sulla base delle dimensioni del bounding box viene ridotto lo spazio di memoria necessario alla sua allocazione. 
+	La matrice relativa all'immagine viene utilizzata come bitmap della matrice a multi risoluzione. In questa matrice vengono suddivisi i punti fra interni ed esterni e vengono poi sistemate le condizioni al contorno. I blocchi a diversi livelli di risoluzione contenuti nella matrice vengono generati da un set di punti di partenza rappresentanti il perimetro del poligono.
 
-
+	Nel capitolo successivo viene descritto come questa soluzione \`{e} stata realizzata e viene confrontata con quella precedente mostrando le principali differenze.

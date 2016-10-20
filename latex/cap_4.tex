@@ -2,12 +2,54 @@
 	\begin{figure}[!bp]
 		\centering
 		\includegraphics[width=10cm]{img/bln.png}
+		\caption{Output di bln\_reader}
 	\end{figure}
-	Nella fase di implementazione di questo progetto mi sono servito di un'immagine rappresentata da una lista di 100 file .grd raffiguranti le altezze del terreno di un'area geografica percorsa dal fiume secchia.
+	Nella fase di implementazione di questo progetto mi sono servito di un'immagine composta da una griglia di 10x10 = 100 tavolette in cui sono contenute le altezze del terreno di un'area geografica percorsa dal fiume Secchia nella zona del modenese.
 
-	I test condotti su \texttt{bln\_reader} vengono utilizzati per controllare il correto funzionamento del programma.\\
-	Dati in input la lista di file relativi alle tavolette e uno rappresentante un poligono, in modalit\`{a} debug il vengono stampati su terminale le informazioni interessanti che vanno a comporre \texttt{map\_info.txt} e la griglia di tavolette, ovvero una matrice 10x10, in cui viene evidenziata l'area del bounding box. \\
-	Sono stati testati 6 diversi poligoni e da cui sono stati generati 6 diversi bounding box e 6 diversi file .PTS.
+	Dando in input il file che rappresenta un poligono disegnato sull'immagine, \texttt{bln\_reader} calcola il rispettivo bounding box, dunque i test condotti vengono utilizzati per controllare il correto funzionamento del programma.\\
+	Sono stati testati 6 diversi poligoni da cui sono stati generati 6 diversi bounding box e 6 diversi file .PTS.\\
+	In modalit\`{a} debug, come mostrato nella figura 4.1, vengono stampate su terminale alcune delle informazioni che vanno a comporre \texttt{map\_info.txt} e la griglia 10x10 di tavolette  in cui viene evidenziata l'area del bounding box. 
+
+	Delle stampe che si possono ottenere in modalit\`{a} debug per il programma \texttt{multire} vengono riportate quelle relative ad un bounding block durante la fase di suddivisione dei punti da \texttt{IN/OUT} a \texttt{0/BIT\_EXTERN} fino al calcolo delle boundary conditions, in modo tale da rendere pi\`{u} chiari questi passaggi.
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[height=5cm]{img/bc1.png}
+		\caption{Suddivisione IN/OUT}
+	\end{figure}\\
+	In questa prima stampa \`{e} possibile vedere come per il blocco identificato da un determinato seed point, vengono controllati tutti i punti e viene eseguita la suddivisione tra punti \texttt{IN (21)} e punti \texttt{OUT (39)} a seconda della posizione rispetto al poligono.
+
+	Dopo aver inserito i punti nelle due code \texttt{queue,queue0}, viene processata prima la coda dei punti esterni. In questo processo ad ogni valore \texttt{OUT} viene sostituito il valore \texttt{BIT\_EXTERN (15)} e quando viene estesa la ricerca ai vicini verso l'esterno dell'immagine, ad ogni valore \texttt{ZERO} trovato viene sostituito il valore \texttt{OUT} inserendo il punto nella coda, operando in modo ricorsivo.\\
+	Eseguendo la procedura speculare sulla coda degli interni si ottiene una divisione fra punti interni con valore 0  e punti esterni con valore \texttt{BIT\_EXTERN}.
+	\newpage
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[height=5cm]{img/bc2.png}
+		\caption{Suddivisione 0/BIT\_EXTERN}
+	\end{figure}
+
+	In ultimo vengono aggiustate le condizioni di bordo, ovvero viene assegnato una combinazione dei valori \texttt{BIT\_N, BIT\_S, BIT\_W, BIT\_E} alle celle che hanno come vicini dei vicini esterni. Nelle stampe vengono mostrati i valori dei campi x delle celle di \texttt{map.host\_info}. Stampando i campi y sarebbe possibile vedere il tipo di condizione al contorno.
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[height=5cm]{img/bc3.png}
+		\caption{Condizioni di bordo}
+	\end{figure}
+
+	Il risultato pi\`{u} interessante di questo lavoro di tesi \`{e} rappresentato dalle dimensioni della matrice a multi risoluzione.\\
+	Per ognuno dei 6 bounding box ottenuti da \texttt{bln\_reader} \`{e} stato lanciato il programma \texttt{multires} che crea la matrice a multi risoluzione utilizzando come seed points l'interpolazione del perimetro del rispettivo poligono. 
+
+	Nella tabella sono riportate le dimensioni di ogni bounding box e della relativa matrice a multi risoluzione, ovvero il numero totale delle celle calcolato moltiplicando il numero di righe e il numero di colonne.\\
+	Il numero di celle della matrice a multi risoluzione dipende dal livello di risoluzione a cui sono forzati i seed points. Nelle prove compiute sono stati forzati i seed points al livello 2 e al livello 3 di risoluzione cos\`{i} da condurre un'analisi discretamente precisa. Forzando i punti del perimetro a una risoluzione maggiore si ottiene ovviamente una matrice a multi risoluzione di dimensioni pi\`{u} grandi rispetto a quelle ottenute forzando i seed points a una risoluzione pi\`{u} bassa, come spiegato in precedenza.
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=14cm]{img/tabella.png}
+		\caption{Confronto fra le dimensioni delle matrici}
+	\end{figure} \\
+	Il rate di compressione si ottiene calcolando il rapporto fra il numero di celle del bounding box e il numero di celle della matrice a multi risoluzione. \\
+	Ordinando i dati delle tabelle e riportandoli in 2 coppie di grafici che mostrano come variano le dimensioni della matrice a multi risoluzione e il fattore di compressione in funzione delle dimensioni del bounding box,  \`{e} possibile osservare come i primi crescano all'aumentare delle dimensioni del bounding box.
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=9cm]{img/graph.png}
+		\caption{Grafici relativi alle dimensioni delle matrici e al tasso di compressione}
+	\end{figure}\\
+	Osservando le curve dei grafici si pu\`{o} notare quanto sia piccolo il fattore di riduzione della matrice a multi risoluzione per bounding box di dimensioni relativamente piccole (sotto il milione di celle) e come cresca rapidamente per poi stabilizzarsi al crescere delle dimensioni di quest'ultimo. Le dimensioni della matrice a multi risoluzione crescono proporzionalmente al rate di compressione.
 	
-
-	Per quanto riguarda \texttt{multires}, invece, per ogni bln 

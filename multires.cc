@@ -41,7 +41,7 @@ void read_map(string path) {
 	map.max.x = map.min.x + (map.ncols);//floor((map.min.x + (map.ncols - 1) * map.dx) / 10) * 10;
 	map.max.y = map.min.y + (map.nrows);//floor((map.min.y + (map.nrows - 1) * map.dy) / 10) * 10;
 	
-	if(dbg) {
+	if(1) {
 		printf("Bounding box:\nrows cols:%d %d\nmin x,y: %d %d\n",map.nrows,map.ncols,map.min.x,map.min.y);
 		printf("max x,y: %d %d \ndx dy: %d %d\n",map.max.x,map.max.y,map.dx,map.dy);
 		printf("First and last slabs: %d %d\nSlab dx dy: %d %d\n", map.first_slab, map.last_slab, map.dxs,map.dys);
@@ -434,9 +434,6 @@ void multires(string path) {
 	}  
 	
 	if(1) {
-		printf("\nCelle originali %d, celle multires %d\n",map.ncols*map.nrows,tot_blocks*BLOCKSIZE_X*BLOCKSIZE_Y);
-	    printf("Compressione: %2.1fx\n\n",1.0/((0.0+tot_blocks)*BLOCKSIZE_X*BLOCKSIZE_Y/map.ncols/map.nrows));
-
 	    // stampa bitmask e bitmaskC
 	    for(int i1 = 0; i1 < levels; i1++) {
 			int sizex = bsx / (1 << i1);
@@ -479,8 +476,10 @@ void multires(string path) {
 	int x_blocks = 1 << (int)(ceil(log((float)map.tot_blocks) / log((float)2) / (float)2)); 
   	int y_blocks = (tot_blocks - 1) / x_blocks + 1;
 
-  	if(dbg) {
+  	if(1) {
   		printf("------------------------------------------------------\n\n");
+  		printf("Celle originali %d, celle multires %d\n",map.ncols*map.nrows,tot_blocks*BLOCKSIZE_X*BLOCKSIZE_Y);
+	    printf("Compressione: %2.1fx\n\n",1.0/((0.0+tot_blocks)*BLOCKSIZE_X*BLOCKSIZE_Y/map.ncols/map.nrows));
 		printf ("Blocks %d alloc: %d x %d array \n",tot_blocks,x_blocks,y_blocks);
 		printf("Multiresolution matrix size: %d\n",x_blocks * y_blocks * BLOCKSIZE_X * BLOCKSIZE_Y);
 	}
@@ -622,7 +621,6 @@ void multires(string path) {
 	   		 	}
     }
 
-
     // FASE 5: Divisione fra punti interni ed esterni
     // per ogni punto di ogni retta ricavo il blocco a cui appartiene e aggiungo tutto il blocco a pt_list 
     for(int i = 0; i < g.punti_m.size(); i++) {
@@ -638,20 +636,20 @@ void multires(string path) {
 		// coordinate del blocco in multirisoluzione
 		int x_multi = codice % x_blocks;
 		int y_multi = codice / x_blocks;
-
+;
 		if(assegnato[codice] == 0) { //inserisco ogni blocco una sola volta 
 			for(int x1 = 0; x1 < BLOCKSIZE_X; x1++) 
 				for(int y1 = 0; y1 < BLOCKSIZE_Y; y1++) {
 					int idx = (y_multi*BLOCKSIZE_Y+y1) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+x1);
 					point real_coord;
 					int4 pt_info;
-
+	
 					map.host_info[idx].x = 1;
 
 					// ricavo le coordinate reali del punto
 					real_coord.x = map.min.x + (BLOCKSIZE_X * map.host_ofs_blocks[codice].x * map.dx) + x1 * map.dx * (1<<ii);
 					real_coord.y = map.min.y + (BLOCKSIZE_Y * map.host_ofs_blocks[codice].y * map.dy) + y1 * map.dy * (1<<ii);
-
+					
 					pt_info.x = x1;
 					pt_info.y = y1;
 					pt_info.z = codice;
@@ -1218,21 +1216,22 @@ void multires(string path) {
 				}
 			}
 
-	/*for(int y = BLOCKSIZE_Y-1;y>=0;--y){
-  		int x_multi = 153 % x_blocks;
-  		int y_multi = 153 / x_blocks;
+	for(int y = BLOCKSIZE_Y-1;y>=0;--y){
+  		int x_multi = 450 % x_blocks;
+  		int y_multi = 450 / x_blocks;
   		for(int x = 0;x<BLOCKSIZE_X;++x){
   			int idx = (y_multi*BLOCKSIZE_Y+y)*BLOCKSIZE_X*x_blocks+(BLOCKSIZE_X*x_multi+x);
   			printf("%3d ",map.host_info[idx].w);
   		}
   		printf("\n");
-  	}*/
+  	}
 
 	//FASE 7: Caricamento delle tavolette
 	int border_top = map.last_slab % map.slabs_nrows; // per caricare le tavolette giuste
+	int border_bottom = map.first_slab % map.slabs_nrows;
 
 	for(int i = map.first_slab; i <= map.last_slab; ++i) {  
-		if(i <= (i - i % map.slabs_nrows + border_top) && (i % map.slabs_nrows) != 0) {
+		if(i <= (i - i % map.slabs_nrows + border_top) && (i % map.slabs_nrows) >= border_bottom) {
 			string file = path;
 			file = file + to_string(i) + ".grd";
 
@@ -1293,7 +1292,7 @@ void multires(string path) {
 				        		// ricavo ora l'indice corretto in host_grid_multi
 				        		int idx = (y_multi*BLOCKSIZE_Y+y1) * BLOCKSIZE_X * x_blocks + (BLOCKSIZE_X*x_multi+x1);
 				        		
-				        		if(dbg) printf("%d %d %d %d %d %d %d %d %d\n",slab.x,slab.y,x,y, x1,y1, x_multi,y_multi,idx);
+				        		if(dbg) printf("%d %d %d %d %d %d %d %d %d %d\n",codice,slab.x,slab.y,x,y, x1,y1, x_multi,y_multi,idx);
 
 				        		map.host_grid_multi[idx].w += h_val;
 				        		++counter[idx];

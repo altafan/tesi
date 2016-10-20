@@ -1,5 +1,5 @@
 \chapter{Realizzazione}
-	Il progetto \`{e} stato implementato con il linguaggio di programmazione C++ ed \`{e} suddiviso in 2 parti: bln\_reader, la prima parte relativa all'elaborazione della matrice di tavolette e del poligono e multires, la seconda fase in cui, sfruttando le informazioni precedentemente acquisite, viene creata la matrice a multi risoluzione.
+	Il progetto \`{e} stato implementato con il linguaggio di programmazione C++ ed \`{e} suddiviso in 2 parti: \textbf{bln\_reader}, la prima parte relativa all'elaborazione della matrice di tavolette e del poligono e \textbf{multires}, la seconda fase in cui, sfruttando le informazioni precedentemente acquisite, viene creata la matrice a multi risoluzione.
 
 	\section{Bln\_reader}
 		\begin{verbatim}
@@ -82,7 +82,7 @@
 				cols = (s_max.x - s_min.x) / slabs[0].dx + 1;
 				rows = (s_max.y - s_min.y) / slabs[0].dy + 1;
 			\end{verbatim} 
-			Calcolando la distanza sull'asse x tra i vertici della matrice di tavolette, dividendola per il numero di colonne contenute in una singola tavoletta e sommando uno si ottiene quindi il numero di colonne totali della matrice. In modo analogo si calcolano il numero delle righe e gli indici i,j di una qualsiasi tavoletta.\\
+			Calcolando la distanza sull'asse x tra i vertici della matrice di tavolette, dividendola per il numero di colonne contenute in una singola tavoletta e sommando uno si ottiene quindi il numero di colonne totali della matrice. In modo analogo si calcolano il numero delle righe e anche gli indici i,j di una qualsiasi tavoletta, sostituendo ad \texttt{s\_max} le coordinate del punto minimo della tavoletta.\\
 			La sottomatrice di tavolette che comprende l'intero rettangolo \`{e} chiamata \textbf{bounding box} e per individuarla basta trovare gli indici i,j delle tavolette che contengono i vertici in basso a sinistra e in alto a destra del rettangolo:
 			\begin{verbatim}
 				//indici matriciali della tavoletta che contiene il vertice 
@@ -94,7 +94,7 @@
 			\begin{verbatim}
 				i = (rows - 1) - x;
 			\end{verbatim} 
-			Le informazioni relative al bounding box vengono scritte nel file \texttt{map\_info.txt} assieme ad altri dati necessari in \texttt{multires()} al momento del caricamento dei valori delle altezze di ogni punto delle tavolette.
+			I dati relativi al bounding box vengono scritti nel file \texttt{map\_info.txt} assieme ad altre informazioni necessarie in \texttt{multires()} al momento del caricamento dei valori delle altezze di ogni punto delle tavolette.
 
 		\subsection{Perimetro del poligono}
 			Attraverso la funzione \texttt{bln\_interpolation()} viene eseguita l'interpolazione del perimetro del poligono, cio\`{e} ogni segmento che congiunge i vertici viene espresso come una successione di punti.\\
@@ -122,7 +122,7 @@
 		\subsection{Output del programma}
 			Ogni nuovo punto che viene calcolato viene trascritto su un file chiamato \texttt{bln\_raster.PTS}.
 			Al termine delle operazioni, questo file, assieme a \texttt{map\_info.txt} rappresentano l'effettivo output del programma. \\
-			\texttt{Bln\_reader}, dunque, dati in input una lista di file .grd rappresentanti un'immagine e un file .BLN contenente la lista delle coordinate dei vertici di un poligono disegnato sopra questa mappa, restituisce in output altri due file, un \texttt{.txt} in cui sono elencate informazioni necessarie per creare la matrice a multi risoluzione, e un .PTS formato dalla lista di punti che compongono il perimetro del poligono.
+			Il programma \texttt{bln\_reader}, dunque, dati in input una lista di file .grd rappresentanti un'immagine e un file .BLN contenente la lista delle coordinate dei vertici di un poligono disegnato sopra questa mappa, restituisce in output altri due file, un \texttt{.txt} in cui sono elencate informazioni necessarie per creare la matrice a multi risoluzione, e un .PTS formato dalla lista di punti che compongono il perimetro del poligono.
 
 			\begin{figure}[htbp]
 				\centering
@@ -152,7 +152,7 @@
 		\end{verbatim} 
 		\subsection{Input}
 			\texttt{Multires} si serve di una \texttt{struct} chiamata \texttt{maps} in cui vengono salvate molte informazioni tra cui quelle passate in \texttt{bln\_reader} attraverso il file \texttt{map\_info.txt}.
-			\`{E} importante ricordare che \texttt{multires} opera sul bounding box e non sull'intera mappa e, attraverso \texttt{read\_map()}, viene letto in primo luogo il contenuto di \texttt{map\_info.txt} che caratterizza questa sotto matrice ed \`{e} composto da: 
+			\`{E} importante ricordare che \texttt{multires} opera sul bounding box e non sull'intera mappa e, attraverso \texttt{read\_map()}, viene letto in primo luogo il contenuto di \texttt{map\_info.txt}. \\Questo file contiene informazioni relative alla sotto matrice e altre utili in fase di caricamento delle altezze, cio\`{e} \`{e} composto da:
 			\begin{itemize}
 				\item il numero di righe totali della matrice di tavolette
 				\item la dimensione del bounding box (nrighe ed ncolonne di punti!)
@@ -161,8 +161,8 @@
 				\item la dimensione delle tavolette
 				\item i numeri della tavoletta iniziale (vertice in basso a sinistra) e di quella finale (vertice in alto a destra) del bounding box.
 			\end{itemize}
-			Infine, viene calcolato il vertice max(x,y) del bounding box semplicemente sommando alle coordinate x,y di \texttt{min\_xy} rispettivamente il numero di colonne e il numero di righe del bounding box.
-
+			Sommando alle coordinate del punto \texttt{min\_xy} le dimensioni del bounding box vengono calcolate le coordinate del punto max(x,y), ovvero le coordinate del vertice in alto a destra della matrice.
+			
 			La funzione \texttt{read\_pts()}, dato in input un file \texttt{.PTS}, memorizza tutti i punti espressi in coordinate geografiche in un array, pronti per essere processati. I blocchi a diversa risoluzione vengono generati a partire da questi punti.
 			\begin{verbatim}
 				typedef struct F4_ {
@@ -177,11 +177,11 @@
 			\end{verbatim}
 			I punti vengono salvati nel vettore \texttt{g.punti\_m}. In ogni elemento del vettore vegono salvati nei campi \texttt{x} ed \texttt{y} le coordinate cartesiane del punto, in \texttt{z} il livello di risoluzione a cui rappresentarlo e in \texttt{w} il tipo di condizione di bordo. 
 
-			Anche in \texttt{multires} \`{e} presente il metodo \texttt{real\_bln()} che memorizza in \texttt{pol.points} la lista dei vertici del poligono. Questo dipende dal fatto che in seguito tutti i punti del bounding box verranno divisi tra interni ed esterni al poligono e per effettuare questo controllo sar\`{a} necessario avere a disposizione i vertici.\\
+			Anche in \texttt{multires} \`{e} presente il metodo \texttt{real\_bln()} che memorizza in \texttt{pol.points} la lista dei vertici del poligono. Questo dipende dal fatto che in seguito tutti i punti del bounding box verranno divisi tra interni ed esterni al poligono e per effettuare questo controllo sar\`{a} necessario avere a disposizione i vertici che lo rappresentano.\\
 			Va precisato che in \texttt{bln\_raster.PTS} sono presenti i vertici del poligono e che, calcolando il numero di punti fra un vertice e l'altro, potrebbero essere estratti senza consultare nuovamente il file \texttt{.BLN}.\\
-			Per come vengono interpolati i segmenti del poligono, per\`{o}, il numero di punti fra due vertici non \`{e} costante, quindi risulta pi\`{u} semplice leggere il file \texttt{.BLN}.
+			Per come vengono interpolati i segmenti del poligono, per\`{o}, il numero di punti fra due vertici non \`{e} costante, quindi risulta pi\`{u} semplice consultare nuovamente il file \texttt{.BLN}.
 			In uno scenario ideale, conoscendo il numero di punti fra due vertici consecutivi sarebbe possibile estrarli senza l'uso del \texttt{.BLN} avendo un aumento in efficienza ma anche in complessit\`{a} delle operazioni. \\
-			Nell'economia dell'intero programma, ovvero di spazio in memoria da allocare, tuttavia questa operazione, che \`{e} un'operazione di input, non incide in maniera rilevante quindi \`{e} stata preferita la semplicit\`{a} della lettura del file relativo al poligono. 
+			Nell'economia dell'intero programma, il cui obiettivo principale \`{e} diminuire lo spazio di memoria necessario ad allocare la matrice a multi risoluzione, questa operazione, che \`{e} un'operazione di input, tuttavia non incide in maniera rilevante quindi \`{e} stata preferita la semplicit\`{a} della lettura del file relativo al poligono. 
 
 		\subsection{Bitmask e seed points}
 			Il corpo principale del programma viene eseguito dalla funzione \texttt{multires()}. Per semplicit\`{a} viene descritto per fasi successive, dato che si possono riconoscere diversi macro-passaggi che portano alla generazione della matrice a multi risoluzione.
@@ -195,9 +195,9 @@
 				bsy_i = m / (BS * \Delta_i) 
 			\]
 			Queste matrici prendono il nome di bitmask dei livelli di risoluzione e con 4 livelli di risoluzione, le matrici vengono memorizzate in un unico array di 4 elementi nominato appunto \texttt{bitmask}.\\
-			Al livello di risoluzione 0, corrispondente alla massima risoluzione, la rispettiva matrice ha dimensioni \[bsx * bsy\] mentre al livello di risoluzione 3, cio\`{e} la risoluzione pi\`{u} bassa, ha dimensioni: \[bsx/2^3 * bsy/2^3\] \\
-			Ogni elemento di una bitmask rappresenta nel bounding box un blocco di punti. Assumendo \textit{BS = 16}, al livello 0, ad esempio, un elemento della matrice \texttt{bitmask[0][j]} rappresenta il rispettivo blocco di 16 punti in coordinate reali nel bounding box.\\
-			Un quadrato di 4 elementi della bitmask a livello i equivale ad un elemento della bitmask a livello di risoluzione i+1 (pi\`{u} bassa) e ad un quadrato di 8 nella matrice del livello precedente i-1 (pi\`{u} alta). 
+			Al livello di risoluzione 1, corrispondente alla massima risoluzione in cui $\Delta_1$ = distanza reale (solitamente 1m), la rispettiva matrice ha dimensioni \[bsx * bsy\] mentre al livello di risoluzione 3, cio\`{e} la risoluzione pi\`{u} bassa, ha dimensioni: \[bsx/2^3 * bsy/2^3\] \\
+			Ogni elemento di una bitmask rappresenta nel bounding box un blocco di punti. Assumendo \textit{BS = 16}, al livello 1, ad esempio, un elemento della matrice \texttt{bitmask[0][j]} rappresenta il rispettivo blocco di 16 punti in coordinate reali nel bounding box.\\
+			Un quadrato di 4 elementi della bitmask a livello i equivale ad un elemento della bitmask a livello di risoluzione i+1 (pi\`{u} bassa) e ad un quadrato di 8 nella matrice del livello precedente i-1 (pi\`{u} alta -- vedi fig. 1.4).\\
 			\begin{figure}[htbp]
 				\centering
 				\includegraphics[height=6cm]{img/bitmask.jpeg}
@@ -210,18 +210,20 @@
 			\[
 				y_{blocco} = (y_p - y_{min}) / (BS * dy) 
 			\]
-			dove \textit{dx, dy} rappresentano le dimensioni della cella nel bounding box (solitamente 1m x 1m) e $x_{min}, y_{min}$ le coordinate di \texttt{min\_xy}.\\
-			Una volta allocato l'array e inizializzati tutti gli elementi delle 4 bitmask, scorrendo il vettore \texttt{g.punti\_m} vengono generati i \textbf{seed points}: per ogni livello di risoluzione si scorre tutto l'array dei punti, nei quali il livello di risoluzione a cui devono essere forzati \`{e} indicato nel campo \texttt{z}, e quando si lavora al livello corretto vengono calcolate le coordinate $x_{blocco}$, $y_{blocco}$ dell'elemento della rispettiva matrice. Dato che ogni elemento del vettore \texttt{bitmask} logicamente \`{e} una matrice ma viene allocato come array monodimensionale, le coordinate ottenute vengono utilizzate per calcolare l'indice j di \texttt{bitmask[i][j]} corretto e all'elemento \texttt{bitmask[i][j]}, se non ancora assegnato o assegnato ad un livello maggiore (risoluzione pi\`{u} bassa!) viene assegnato il valore in \texttt{z}.\\
-			Quando viene assegnato un valore ad un elemento \texttt{bitmask[i][j]}, vengono assegnati allo stesso livello di risoluzione, se possibile, anche gli altri $2^i * 2^i - 1$ elementi costituenti un quadrato alla stessa risoluzione. Il concetto \`{e} quello di estendere la risoluzione del punto in maniera proporzionata al livello stesso, ovvero estendere per un'area piccola la risoluzione massima e per un'area grande la risoluzione pi\`{u} bassa. Quindi, per esempio prendendo \textit{BS=16} la risoluzione di un punto forzato alla massima risoluzione possibile viene estesa a soli altri 3 blocchi, ovvero in totale 16*4 = 64 punti del bounding box, e quella di un punto forzato alla risoluzione pi\`{u} bassa viene estesa ad un'area di 8x8 blocchi, ovvero (16*8)x(16*8) = 16384 punti del bounding box.  
+			dove \textit{dx, dy} rappresentano le dimensioni della cella nel bounding box (solitamente 1m x 1m) e $x_{min}, y_{min}$ le coordinate di \texttt{min\_xy}.
+
+			Una volta allocato l'array e inizializzati tutti gli elementi delle 4 bitmask, scorrendo il vettore \texttt{g.punti\_m} dei \textbf{seed points}, vengono generati i primi blocchi ai livelli di risoluzione indiciati nel campo z: scorrendo l'array bitmask viene controllato se si lavora al livello corretto, ovvero se il livello di risluzione $i$ corrisponde a quello indicato nel campo z, e, in questo caso, vengono calcolate le coordinate $x_{blocco}$, $y_{blocco}$ dell'elemento della rispettiva matrice. Dato che ogni elemento del vettore \texttt{bitmask} logicamente \`{e} una matrice ma viene allocato come array monodimensionale, le coordinate ottenute vengono utilizzate per calcolare l'indice j di \texttt{bitmask[i][j]} corretto e all'elemento, se con valore iniziale o con valore maggiore (risoluzione pi\`{u} bassa!) viene assegnato il livello di risoluzione indicato in \texttt{z}.
+
+			Quando viene dato un valore ad un elemento \texttt{bitmask[i][j]}, lo stesso valore viene assegnato, se possibile, anche gli altri $2^i * 2^i - 1$ elementi costituenti un quadrato alla stessa risoluzione. Il concetto \`{e} quello di estendere la risoluzione del punto in maniera proporzionata al livello stesso, ovvero estendere per un'area piccola la risoluzione massima e per un'area grande la risoluzione pi\`{u} bassa. Quindi, per esempio prendendo \textit{BS=16} la risoluzione di un punto forzato alla massima risoluzione possibile viene estesa a soli altri 3 blocchi, ovvero in totale 16*4 = 64 punti del bounding box, e quella di un punto forzato alla risoluzione pi\`{u} bassa viene estesa ad un'area di 8x8 blocchi, ovvero (16*8)x(16*8) = 16384 punti del bounding box.  
 			\begin{figure}[htbp]
 				\centering
 				\includegraphics[height=7cm]{img/elemento_bitmask.png}
-				\caption{Esempio di completamento quadrato in bitmask (livello 0)}
+				\caption{Esempio di completamento quadrato in bitmask (livello 1)}
 			\end{figure}
 		\subsection{Completamento delle bitmask a partire da seed points}
-			Quelli che vengono chiamati seed points sono, quindi, in realt\`{a} i blocchi di punti in cui sono contenuti. \\
-			Quando la prima fase termina, il risultato ottenuto sono 4 matrici di zeri eccezion fatta per i quadrati generati dai seed points. Le bitmask vengono completate in questa successiva fase nella quale, inizialmente, partendo dalla risoluzione pi\`{u} alta ogni quadrato generato viene copiato negli altri livelli. Un quadrato copiato a livello successivo viene dimezzato, mentre quando viene copiato in un livello precedente viene completato per raddoppiarne le dimensioni.\\
-			Quando questo lavoro viene terminato, l'utlimo step \`{e} quello di sostituire gli zero rimannenti con il valore pi\`{u} alto di \texttt{bitmask}, ovvero con il valore di risoluzione pi\`{u} bassa. \\
+
+			Quando la prima fase termina, il risultato ottenuto sono 4 matrici di zeri eccezion fatta per i quadrati generati a partire dai seed points. Le bitmask vengono completate in questa successiva fase nella quale, inizialmente, partendo dalla risoluzione pi\`{u} alta ogni quadrato generato viene copiato negli altri livelli. Un quadrato copiato a livello successivo viene dimezzato, mentre quando viene copiato in un livello precedente viene completato per raddoppiarne le dimensioni.\\
+			Quando questo lavoro viene terminato, l'utlimo step \`{e} quello di sostituire gli zero rimanenti con il valore pi\`{u} alto di \texttt{bitmask}, ovvero con il valore di risoluzione pi\`{u} bassa. \\
 			Il completamento delle bitmask avviene quindi lavorando da risoluzione pi\`{u} alta a risoluzione pi\`{u} bassa, \textit{"provando"} a diminuirla per gli elementi per cui non ci sono motivi di mantenerla alta. \\
 			Viene inoltre segnalato errore se sono presenti conflitti in cui la richiesta di risoluzione per un elemento di una matrice \`{e} diversa per pi\`{u} di un livello rispetto a quella prevista. 
 			\begin{figure}[htbp]
@@ -238,21 +240,21 @@
 			\begin{figure}[htbp]
 				\centering
 				\includegraphics[height=5cm]{img/bitmaskC.png}
-				\caption{Esempio di bitmask e bitmaskC con i = 3}
+				\caption{Esempio di bitmask e bitmaskC a livello 4 di risoluzione}
 			\end{figure}
-			Nell'esempio riportato in figura 3.6 i tre puntini vengono stampati al posto dei valori di \texttt{bitmaskC[i][j]} uguali a -1. Osservando bene bitmask, si nota come i blocchi relativi al perimetro del poligono siano stati forzati ad una risoluzione pi\`{u} alta, mentre guardando \texttt{bitmaskC} si pu\`{o} vedere come emerga nitidamente la figura del poligono. A questo livello di risoluzione, ovvero a risoluzione pi\`{u} bassa, ogni blocco rappresenta 256 punti in coordinate reali!
+			Nell'esempio riportato in figura 3.6 i tre puntini vengono stampati al posto dei valori di \texttt{bitmaskC[i][j]} uguali a -1. Osservando bene bitmask, si nota come i blocchi relativi al perimetro del poligono siano stati forzati ad una risoluzione pi\`{u} alta, mentre guardando \texttt{bitmaskC} si pu\`{o} vedere come emerga nitidamente la figura del poligono. A livello 3 di risoluzione ogni blocco rappresenta 256x256 = 65536 punti in coordinate reali!
 
 			Quando vengono numerati i blocchi, viene anche calcolato il totale dei blocchi codificati e salvato nella variabile \texttt{tot\_blocks}. \\
 			Il numero totale dei blocchi codificati viene utilizzato per calcolare il numero di righe \texttt{x\_blocks} e il numero di colonne \texttt{y\_blocks} della matrice a multi risoluzione. Inoltre, \texttt{x\_blocks} viene calcolato cos\`{i} da essere una potenza di 2 e, di conseguenza, il prodotto fra numero di righe e numero di colonne \`{e} il pi\`{u} piccolo multiplo della potenza di 2 calcolata \texttt{x\_blocks} maggiore di \texttt{tot\_blocks}. 
 
 		\subsection{Primo confronto}
-			Mettendo a confronto questa nuova soluzione con quella gi\`{a} esistente la differenza evidente sta nella notevole riduzione della matrice a multi risoluzione. In questo lavoro di tesi, fino a questo momento infatti si \`{e} operato sul boinding box mentre nella versione originale si lavorava sull'intera mappa e fin dalle prime stampe che si possono eseguire su questa frazione di codice si pu\`{o} notare che, confrontando le dimensioni delle due matrici a multi risoluzione, la "nuova" ha dimensioni molto inferiori.\\
+			Mettendo a confronto questa nuova soluzione con quella gi\`{a} esistente la differenza evidente sta nella notevole riduzione della matrice a multi risoluzione. In questo lavoro di tesi, fino a questo momento infatti si \`{e} operato sul bounding box mentre nella versione originale si lavorava sull'intera mappa e fin dalle prime stampe che si possono eseguire su questa frazione di codice si pu\`{o} notare che, confrontando le dimensioni delle due matrici a multi risoluzione, la "nuova" ha dimensioni molto inferiori.\\
 			Inoltre, nel codice di partenza i seed points dai quali vengono completate le bitmask sono indicati dall'utente tramite un file \texttt{.PTS}, mentre in questa nuova versione viene interpolato il perimetro del poligono ricavando i punti in modo automatico e, salvandoli in un file dello stesso formato, \`{e} possibile riutilizzare la parte di algoritmo che li processa.\\
 			All'utente \`{e} ancora permesso specificare i seed points manualmente, semplicemente i due file .PTS vengono uniti in uno unico.
 
 		\subsection{Ricerca dei punti interni ed esterni ed espansione ai vicini}
 			La matrice dei blocchi in cui questi vengono memorizzati in ordine di codice si chiama \texttt{map.host\_info}.\\
-			Le celle delle varie bitmask rappresentano  blocchi (di punti) di dimensione diversa. Per uniformare tale rappresentazione all'interno della matrice \texttt{map.host\_info}, tutti i blocchi vengono memorizzati con dimensione \textit{BS}x\textit{BS}. Le celle dei blocchi ai diversi livelli di risoluzione \textit{i} rappresentano dunque i punti a distanza $\Delta_i$ (vedi definizione di blocco) del bounding box.
+			Le celle delle varie bitmask, come detto, rappresentano  blocchi di punti di dimensione diversa. Per uniformare tale rappresentazione all'interno della matrice \texttt{map.host\_info}, tutti i blocchi vengono memorizzati con dimensione \textit{BS}x\textit{BS}. Le celle dei blocchi ai diversi livelli di risoluzione \textit{i} rappresentano dunque i punti a distanza $\Delta_i$ (vedi definizione di blocco) del bounding box.
 			\begin{figure}[htbp]
 				\centering
 				\includegraphics[height=6cm]{img/blocchi.png}
@@ -317,7 +319,7 @@
 				\caption{I punti dei \texttt{bounding\_blocks} compongono il doppio perimetro del poligono}
 			\end{figure}
 			
-			La coda \texttt{queue} contiene, come detto, tutti i punti dei \texttt{bounging\_blocks} esterni al poligono. Estraendo elementi dalla coda fino a quando non \`{e} vuota, per ogni elemento estratto viene ricostruito l'indice \texttt{idx} e viene assegnato a \texttt{map.host\_info[idx].x} il valore \texttt{BIT\_EXTERN}. Per ogni punto \texttt{map.host\_info[idx]} vengono controllati i vicini Nord/Sud/Est/Ovest e per ognuno dei vicini, se il valore \`{e} uguale a \texttt{ZERO}, viene assegnato il valore \texttt{OUT} e vengono inserite le informazioni del punto in coda a \texttt{queue}.
+			Estraendo elementi dalla coda \texttt{queue} fino a quando non \`{e} vuota, per ogni elemento estratto viene ricostruito l'indice \texttt{idx} e viene assegnato a \texttt{map.host\_info[idx].x} il valore \texttt{BIT\_EXTERN}. Per ogni punto \texttt{map.host\_info[idx]} vengono controllati i vicini Nord/Sud/Est/Ovest e per ognuno dei vicini, se il valore \`{e} uguale a \texttt{ZERO}, viene assegnato il valore \texttt{OUT} e vengono inserite le informazioni del punto in coda a \texttt{queue}.
 			\begin{figure}[htbp]
 				\centering
 				\includegraphics[height=4.5cm]{img/vicini.png}
@@ -330,7 +332,7 @@
 				\caption{Espansione della ricerca}
 			\end{figure}
 
-			Per esplorare i vicini viene utilizzato un array di supporto chiamato \texttt{map.neigh} lungo \texttt{4*tot\_blocks}:
+			Per esplorare i vicini, nel caso in cui la cella vicina sia su un blocco diverso da quello corrente, viene utilizzato un array di supporto chiamato \texttt{map.neigh} lungo \texttt{4*tot\_blocks}:
 			\begin{verbatim}
 				typedef struct {
 				    char lev;
@@ -369,11 +371,11 @@
 				\end{figure}
 				Le celle sul bordo del poligono devono contenere le condizioni di bordo ed oltre a queste, \`{e} necessario sapere a quali posizioni dei vicini questi valori fanno riferimento. Vegnono perci\`{o} definiti 4 valori \texttt{BIT\_N}, \texttt{BIT\_S}, \texttt{BIT\_W}, \texttt{BIT\_E} che esprimono le posizioni dei vicini esterni di un punto intenro che sul bordo del poligono.\\
 				Ogni cella pu\`{o} avere 1, 2 o 3 vicini esterni. 
-				Per ogni punto di \texttt{map.host\_info} viene controllato che sia interno e se stia sul bordo e, contando quanti vicini hanno valore \texttt{BIT\_EXTERN}, viene assegnato il valore temporaneo 2 solo a quelli che hanno al massimo due vicini esterni.\\
+				Per ogni punto interno di \texttt{map.host\_info} che sta sul perimetro del poligono, contando quanti vicini hanno valore \texttt{BIT\_EXTERN}, viene assegnato il valore temporaneo 2 solo a quelli che hanno al massimo due vicini esterni.\\
 				Dopo questa prima spazzata sulla matrice di blocchi, viene eseguita una seconda lettura dei valori delle celle e ad ogni cella con valore uguale a 2, viene assegnato un numero che rappresenta una combinazione dei valori  \texttt{BIT\_N}, \texttt{BIT\_S}, \texttt{BIT\_W}, \texttt{BIT\_E} a seconda di quali siano le posizioni dei vicini esterni coinvolti. \\
-				Al campo x dell'elemento generico \texttt{map.host\_info[idx]} viene assegnato uno dei quattro valori se il punto ha un solo vicino esterno oppure una combinazione lineare di due valori se ha due vicini, mentre nel nei campi z e w vengono salvati i tipi di condizione al contorno (vedi "Poligono" nella parte introduttiva) relativi ai vicini coinvolti.
+				Al campo x dell'elemento generico \texttt{map.host\_info[idx]} viene assegnato uno dei quattro valori se il punto ha un solo vicino esterno oppure una combinazione lineare di due valori se ha due vicini, mentre nei campi z e w vengono salvati i tipi di condizione al contorno (vedi "Poligono" nella parte introduttiva) relativi ai vicini coinvolti.
 		\subsection{Caricamento delle informazioni delle tavolette nella matrice a multi risoluzione}
-			Una volta che la matrice di blocchi contiene tutte le informazioni corrette, l'ultima parte di \texttt{multires()} riguarda la fase di caricamento delle altezze del terreno contenute nei file di tavolette all'interno della matrice a multi risoluzione \texttt{map.host\_grid\_multi}.\\\\
+			Una volta che la matrice di blocchi contiene tutte le informazioni corrette, l'ultima parte di \texttt{multires()} riguarda la fase di caricamento delle altezze del terreno contenute nei file di tavolette direttamente nella matrice a multi risoluzione \texttt{map.host\_grid\_multi}.\\
 			\begin{verbatim}
 				typedef struct F4_ {
 				    float x,y,z,w;
@@ -381,37 +383,52 @@
 
 				map.host_grid_multi=(F4*)malloc(x_blocks*y_blocks*
 				                                BLOCKSIZE_X*BLOCKSIZE_Y*
-				                                ssizeof(F4));
+				                                sizeof(F4));
 			\end{verbatim}
+			Le dimensioni della matrice a multi risoluzione dipendono dal numero di blocchi che sono stati creati. Si pu\`{o} dire allora che dipendono dunque dal livello di risoluzione a cui vengono forzati i blocchi contenenti i seed points. Pi\`{u} \`{e} alta la richiesta di risoluzione, maggiore \`{e} il numero di blocchi creati. Il numero di blocchi creati dipende a sua volta dalle dimensioni delle bitmask che li contengono. Le dimensioni delle bitmask $bsx_i$,$bsy_i$ sono calcolate compiendo divisioni sul numero di righe e di colonne della matrice rappresentanti il bounding box. Avendo ridotto in \texttt{bln\_reader} la matrice di punti su cui lavorare, si trae il vantaggio di ridurre lo spazio di memoria necessario ad allocare la matrice a multi risoluzione.
+
 			Va detto che questa parte di codice \`{e} stata implementata prima in ordine cronologico rispetto a quella relativa alla matrice di blocchi e, dunque, vengono caricati i valori delle altezze del terreno di tutto il bounding box, senza tener conto se i punti in coordinate reali a cui questi valori si riferiscono siano interni o esterni al poligono. Non viene quindi consultata \texttt{map.host\_info} durante quest'ultima fase di caricamento.
 
+			Dato che il caricamento dei valori delle altezze viene eseguito direttamente sulla matrice a multi risoluzione, per ogni punto delle tavolette \`{e} necessario costruire l'indice \texttt{idx} dalle coordinate reali dei punti a cui questi si riferiscono.\\
 			Vengono cos\`{i} processate tutte le tavolette da \texttt{map.first\_slab} a \texttt{map.last\_slab}, due variabili che contengono, come espresso dal nome, il numero della prima e dell'ultima tavoletta da caricare, ovvero quelle che contengono \texttt{min\_xy} e \texttt{max\_xy} relativi al bounding box.\\
 			Per ogni file \texttt{.grd} vengono lette staticamente le informazioni dell'intestazione (vedi "Tavolette" nella sezione introduttiva), e i valori delle altezze del terreno, invece, attraverso un ciclo che termina quando viene letto il carattere speciale \texttt{EOF} (End Of File). \\
 			All'interno dei file, le altezze del terreno sono elencate in ordine di riga dunque il primo valore letto si riferisce al punto in coordinate reali \texttt{m\_point} e l'ultimo al punto \texttt{M\_point} indicati nell'intestazione. Considerando allora una tavoletta come una matrice $dxs$ x $dys$ di punti, il punto in posizione [0, 0] \`{e} uguale ad \texttt{m\_point} e il punto in posizione [$dxs$-1][$dys$-1] \`{e} uguale ad \texttt{M\_point}. \\
-			Vengono cos\`{i} utilizzati due contatori nel ciclo che fungono da indici \textit{i,j} della "matrice" tavoletta e attraverso queste variabili vengono ricostruite le coordinate reali dei punti a cui le altezze sono correlate, sommando semplicemente gli indici a \texttt{min\_xy}.\\
+			Vengono cos\`{i} utilizzati due contatori nel ciclo che fungono da indici \textit{i,j} della "matrice" tavoletta e attraverso queste variabili vengono ricostruite le coordinate reali dei punti a cui le altezze sono correlate, sommando semplicemente gli indici a \texttt{min\_xy}.
+			\begin{verbatim}
+				// i = 0..nrow
+				// j = 0..nccol
+				// k = first_slab..last_slab
+				coordinata_reale_x = tavoletta[k].min_x + j; 
+				coordinata_reale_y = tavoletta[k].min_y + i; 
+			\end{verbatim}
 			Dalle coordinate geografiche si passa alle coordinate di blocco della rispettiva bitmask, prima, e alle coordinate di blocco della matrice a multirisoluzione, poi, in maniera del tutto analoga a quanto descritto per la matrice di blocchi \texttt{ma.host\_info}.
 
-			Gli elementi della matrice a multi risoluzione contengono nel campo \texttt{w} un valore rappresentante un'altezza. Dato che, analogamente a \texttt{map.host\_info}, i blocchi, anche se di dimensioni diverse, vengono rappresentati in modo uniforme, un punto della matrice \texttt{map.host\_grid\_multi} rappresenta un blocco di punti della mappa di dimensioni variabili a seconda del livello di risoluzione. Ogni elemento della matrice a multi risoluzione contiene co\`{i} una media delle altezze del terreno del blocco di punti rappresentato dalla singola cella. Pi\`{u} la risoluzione \`{e} alta pi\`{u} il valore \`{e} \textit{preciso}.\\
-			Anche \texttt{map.host\_grid\_multi} viene allocata come array monodimensionale dunque una volta calcolato l'indice \textit{idx} corrispondente al punto in coordinate geografiche, all'elemento \texttt{map.host\_grid\_multi[idx].w} viene sommato il valore dell'altezza relativa al punto.\\
-			Viene utilizzato un vettore di supporto \texttt{counter} di dimensioni uguali all'array \texttt{map.host\_grid\_multi} in cui nell'elemento generico \texttt{counter[idx]} viene memorizzato il numero di somme eseguite sull'elemento \texttt{map.host\_grid\_multi[idx].w}.\\
-			Una volta caricati tutti i valori delle altezze elencati nei file delle tavolette, viene eseguito un ciclo sulla matrice a multi risoluzione in cui ogni elemento \texttt{map.host\_grid\_multi[idx].w}, contente la somma delle altezze del blocco di punti che rappresenta, viene diviso per \texttt{counter[idx]} ottenendo cos\`{i} la media delle altezze del blocco.\\
+			Analogamente a \texttt{map.host\_info}, i blocchi, anche se di dimensioni diverse, vengono rappresentati in modo uniforme all'interno della matrice a multi risoluzione. Un elemento di \texttt{map.host\_grid\_multi} rappresenta un blocco di punti reali di dimensioni variabili a seconda del livello di risoluzione. 
+
+			Anche \texttt{map.host\_grid\_multi} viene allocata come array monodimensionale dunque una volta calcolato l'indice \textit{idx} corrispondente alle coordinate geografiche del punto, all'elemento \texttt{map.host\_grid\_multi[idx].w} viene sommato il valore dell'altezza corrispondente.\\
+			Viene utilizzato un vettore di supporto \texttt{counter} in cui nell'elemento generico \texttt{counter[idx]} viene memorizzato il numero di somme eseguite sull'elemento \texttt{map.host\_grid\_multi[idx].w}.\\
+			Una volta caricati tutti i valori delle altezze elencati nei file delle tavolette, viene eseguito un ciclo sulla matrice a multi risoluzione in cui ogni elemento \texttt{map.host\_grid\_multi[idx].w}, contente la somma delle altezze del blocco di punti che rappresenta, viene diviso per \texttt{counter[idx]} ottenendo cos\`{i} la media delle altezze del blocco.
+
+			Ogni cella contiene cos\`{i} una media delle altezze del terreno del blocco di punti rappresentato. Pi\`{u} la risoluzione \`{e} alta, minore \`{e} il numero di somme effettuate, pi\`{u} \`{e} \textit{preciso} il valore.\\
 
 		\subsection{Secondo confronto}
-			Nella versione originale del codice la matrice \texttt{map.host\_info} ha dimensioni uguali alla matrice relativa alla mappa geografica, quindi non viene utilizzata come matrice di blocchi ma solo come bitmask dell'intera matrice dell'immagine che immagazzina le informazioni dei punti interni/esterni e le relative condizioni di bordo. La suddivisione dei punti viene eseguita all'interno di \texttt{bln\_reader}, questo perch\`{e} il lavoro compiuto su \texttt{map.host\_info} viene fatto prima della generazione della multi risoluzione. Il vantaggio di questo tipo di soluzione sta nel fatto che il rapporto di vicinanza fra i punti non viene modificato e l'accesso alle celle e ai rispettivi vicini \`{e} gestito in modo pi\`{u} semplice col solo utilizzo degli indici \textit{i, j} della matrice, infatti fissato in posizione [0, 0] nella matrice il punto \texttt{min\_xy}, ogni altro punto con indici [i, j] rappresenta il punto in coordinate reali \texttt{min\_xy.x+j}, \texttt{min\_xy.y+i}.\\
-			Nella nuova soluzione adottata, invece, dopo aver generato le bitmask dei diversi livelli di risoluzione, \texttt{map.host\_info} viene trattata come una matrice di blocchi, dunque in primo luogo ha dimensioni ridotte rispetto alla versione precedente. Per accedere ad una determinata cella rappresentante un punto in coordinate reali, tuttavia, non \`{e} possibile sfruttate gli inidici i, j ma \`{e} necessario calcolare l'indice \textit{idx} come descritto precedentemente. Inoltre dato che i blocchi all'interno della matrice sono ordinati secondo il codice, \`{e} necessario utilizzare strutture dati di supporto gi\`{a} introdotte per mantenere logicamente l'originale rapporto di vicinanza fra le celle.\\
+			Nella versione originale del codice la matrice \texttt{map.host\_info} ha dimensioni uguali alla matrice relativa alla mappa geografica, quindi non viene utilizzata come matrice di blocchi ma solo come bitmap dell'intera matrice dell'immagine che contiene le informazioni dei punti interni/esterni e le condizioni di bordo. La suddivisione dei punti viene eseguita all'interno di \texttt{bln\_reader} perch\`{e} il lavoro compiuto su \texttt{map.host\_info} viene fatto prima della generazione della multi risoluzione. Il vantaggio di questo tipo di soluzione sta nel fatto che il rapporto di vicinanza fra i punti non viene modificato e l'accesso alle celle e ai rispettivi vicini \`{e} gestito in modo pi\`{u} semplice col solo utilizzo degli indici \textit{i, j} della matrice, infatti fissato in posizione [0, 0] nella matrice il punto \texttt{min\_xy}, ogni altro punto con indici [i, j] rappresenta il punto in coordinate reali \texttt{min\_xy.x+j}, \texttt{min\_xy.y+i}.\\
+			Nella nuova soluzione adottata, invece, dopo aver generato le bitmask dei diversi livelli di risoluzione, \texttt{map.host\_info} viene trattata come bitmask di \texttt{map.host\_grid\_multi}, dunque in primo luogo ha dimensioni ridotte rispetto alla versione precedente. Per accedere ad una determinata cella rappresentante un punto in coordinate reali, tuttavia, non \`{e} possibile sfruttare gli inidici i, j ma \`{e} necessario calcolare l'indice \textit{idx} come descritto precedentemente. Inoltre dato che i blocchi all'interno della matrice sono ordinati secondo il codice, \`{e} necessario utilizzare le strutture dati di supporto introdotte precedentemente.
+
 			Nel complesso, il nuovo processo di separazione dei punti fra interni ed esterni ha una complessit\`{a} pi\`{u} elevata, ma il risparmio di memoria \`{e} significativo ed inoltre agli elementi di \texttt{map.host\_info} si accede sempre direttamente dopo aver calcolato l'indice a partire da coordinate reali, non scorrendo mai per intero la matrice, dunque queste operazioni non richiedono un elevato tempo di calcolo da parte della macchina.\\
+			Le dimensioni della matrice a multi risoluzione, come visto, vengono ridotte grazie al fatto che si lavora sul bounding box e non sull'intera immagine. 
 
 		\subsection{Output}
-			Stampando la matrice a multi risoluzione si otterrebbe una griglia di valori che, come descritto, rappresentano la media dei valori dei blocchi di punti reali a cui si riferiscono. Va precisato che la stampa effettiva su terminale della matrice non risulta visivamente comprensibile dato che le sue dimensioni, anche se ridotte rispetto alla precedente versione, sono comqunque grandi.\\
+			Stampando la matrice a multi risoluzione si otterrebbe una griglia di valori che, come descritto, rappresentano la media delle altezze del terreno dei blocchi di punti corridpondenti.\\
 			Ipotizzando che la matrice a multi risoluzione rappresenti i pixel di un'immagine raffigurante un'area geografica anzich\'{e} le altezze di una mappa altimetrica, il risultato potrebbe essere qualcosa di simile a quanto mostrato in fig. 3.13:
 			\begin{figure}[htbp]
 				\centering
 				\includegraphics[height=6cm]{img/multires.png}
 				\caption{Esempio di un'immagine a multi risoluzione}
 			\end{figure}\\
-			Si pu\`{o} notare come, in questo caso, partendo dall'angolo in basso a destra dell'immagine in cui \`{e} presente il seed point che genera il quadrato a massima risoluzione, la risoluzione diminuisca per il resto dell'immagine. Pi\`{u} un punto \`{e} lontano dal seed point, meno nitida \`{e} la sua rappresentazione grafica.
+			Analizzando l'immagine si possono distinguere 3 livelli di risoluzione. Il livello di massima risoluzione \`{e} quello generato dai seed points e si pu\`{o} notare come pi\`{u} un punto \`{e} lontano dalla zona a massima risoluzione, meno nitida \`{e} la sua rappresentazione grafica.
 
-			Il programma \texttt{multires} dati, quindi, in input i file relativi al poligono e ai seed points e il file \texttt{map\_info.txt} contenente al suo interno anche le informazioni \textit{di servizio} relative al bounding box prodotto in \texttt{bln\_reader}, restituisce una matrice a multi risoluzione di dimensioni ridotte di un fattore compreso fra le 10 e le 50 volte rispetto a quelle del bounding box, che contiene valori rappresentanti altezze del terreno di blocchi di punti geografici.
+			Il programma \texttt{multires} dati, quindi, in input i file relativi al poligono e ai seed points e il file \texttt{map\_info.txt} contenente al suo interno anche le informazioni \textit{di servizio} e quelle relative al bounding box prodotto in \texttt{bln\_reader}, restituisce una matrice a multi risoluzione di dimensioni ridotte di un fattore compreso fra le 10 e le 50 volte rispetto a quelle del bounding box.
 			\begin{figure}[htbp]
 				\centering
 				\includegraphics[height=8cm]{img/schema2.png}

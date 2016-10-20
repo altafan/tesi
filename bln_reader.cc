@@ -92,7 +92,7 @@ void bln_interpolation() {
 			tx += deltax / dd;
 			ty += deltay / dd;
 
-			fprintf(file,"%f %f 3 0\n",tx,ty);
+			fprintf(file,"%f %f 3 0\n",tx,ty/*,pol.edges[i]*/);
 
 			l = sqrt((tx - x0) * (tx - x0) + (ty - y0) * (ty - y0));
 		}
@@ -242,7 +242,7 @@ void bounding_box(int n_slab) {
 
 int main() {
 
-	string BLN_path = "polygons/prova";
+	string BLN_path = "polygons/bln2";
 	string GRD_path = "slabs/";
 
 	read_bln(BLN_path);
